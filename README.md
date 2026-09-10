@@ -14,6 +14,7 @@ Combat.Domain/          entities, enums, domain services, repository interfaces
 Combat.Application/     commands, queries, handlers, validators, pipeline behaviours
 Combat.Infrastructure/  EF Core, repository implementations, external services
 Combat.Presentation/    HTTP API: controllers, DTOs, middleware
+Combat.Contracts/       owned Protobuf contracts and generated gRPC client/server types
 Combat.Test/            xUnit tests for all of the above
 ```
 
@@ -29,6 +30,33 @@ dotnet build Combat.Presentation.slnx
 dotnet test --solution Combat.Presentation.slnx
 dotnet run --project Combat.Presentation/Combat.Presentation.csproj
 ```
+
+## Internal gRPC contract
+
+`Combat.Contracts` owns the versioned `combat_player_v1.proto` contract and is
+published as the `Combat.Contracts` NuGet package. It contains both the generated
+C# gRPC types and the source `.proto` under `proto/`, so another service only
+references a released package version; it never references this service's Domain or
+Application projects.
+
+The template exposes `CombatPlayerService/GetPlayer` on its internal gRPC endpoint.
+The REST API remains the client-facing interface. Locally, gRPC listens on
+`http://localhost:8081`; Docker binds it only to loopback. In Kubernetes, expose
+that port through an internal-only Service, never through the ingress.
+
+Concrete gRPC service implementations in `Presentation/Grpc/Services` are mapped
+automatically at startup. A new service only needs to inherit from its generated
+contract base class; no additional `MapGrpcService<T>()` call is needed.
+
+`Infrastructure/Grpc/Clients/PlayerGrpcClient` shows the consumer-side pattern.
+Handlers depend on the `Application/Ports/IPlayerClient` port and its application
+model, never on Protobuf or gRPC types. The adapter uses the generated typed client,
+maps its response, and applies the configurable `Grpc:Player:TimeoutSeconds` deadline.
+
+On every release tag (`vX.Y.Z`), `publish-contracts.yaml` packages the matching
+version and publishes it to GitHub Packages. A consuming repository configures its
+NuGet source as `https://nuget.pkg.github.com/<organisation>/index.json` and pins a
+released `Combat.Contracts` version.
 
 ## Running the stack
 
@@ -106,6 +134,7 @@ moves nothing.
 | `ci.yaml` | PR to `dev` / `main`, push to `main` | Calls the reusable lint, test and build workflows |
 | `sonar.yaml` | PR and push to `dev`, except Dependabot | Builds and tests under the SonarScanner for .NET, uploads coverage |
 | `security.yml` | PR to `dev` / `main`, push to `main` | Trivy filesystem scan, zizmor workflow audit |
+| `publish-contracts.yaml` | release tag `vX.Y.Z` | Packs `Combat.Contracts` and publishes it to GitHub Packages |
 | `release-please.yaml` | push to `main` | Maintains the release pull request |
 | `back-merge.yaml` | after a release | Opens and merges `main` → `dev` |
 

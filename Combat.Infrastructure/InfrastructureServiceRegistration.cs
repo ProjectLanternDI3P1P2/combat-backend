@@ -1,4 +1,5 @@
 using Combat.Domain.Services;
+using Combat.Infrastructure.Grpc;
 using Combat.Infrastructure.Persistence;
 using Combat.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,8 @@ public static class InfrastructureServiceRegistration
             .AddSingleton(Options.Create(databaseOptions))
             .AddSingleton<IClock, SystemClock>()
             .AddEfConnection()
-            .AddRepositories();
+            .AddRepositories()
+            .AddGrpcConfiguration(configuration);
     }
 
     private static IServiceCollection AddRepositories(this IServiceCollection services)
@@ -72,4 +74,5 @@ public static class InfrastructureServiceRegistration
 
         return connectionStringBuilder.ConnectionString;
     }
+
 }
