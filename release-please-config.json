@@ -6,7 +6,7 @@
     ".": {
       "package-name": "dotnet-backend-template",
       "changelog-path": "CHANGELOG.md",
-      "extra-files": ["Combat.Presentation/Combat.Presentation.csproj"]
+      "extra-files": ["Combat.Presentation/Combat.Presentation.csproj", "Combat.Contracts/Combat.Contracts.csproj"]
     }
   },
   "changelog-sections": [

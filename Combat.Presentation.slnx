@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="Combat.Contracts/Combat.Contracts.csproj" />
   <Project Path="Combat.Application/Combat.Application.csproj" />
   <Project Path="Combat.Domain/Combat.Domain.csproj" />
   <Project Path="Combat.Infrastructure/Combat.Infrastructure.csproj" />
