@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
@@ -19,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Combat.Contracts\Combat.Contracts.csproj" />
     <ProjectReference Include="..\Combat.Application\Combat.Application.csproj" />
     <ProjectReference Include="..\Combat.Infrastructure\Combat.Infrastructure.csproj" />
   </ItemGroup>
