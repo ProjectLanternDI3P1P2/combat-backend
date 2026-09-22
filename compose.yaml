@@ -22,13 +22,33 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=combat;Username=combat"
+      RabbitMq__Enabled: "true"
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__UserName: combat
+      RabbitMq__Password: combat
     ports:
       - "8080:8080"
       # Internal gRPC endpoint. Do not expose this port in production Kubernetes ingress.
       - "127.0.0.1:8081:8081"
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: combat
+      RABBITMQ_DEFAULT_PASS: combat
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   postgres-data:

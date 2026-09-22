@@ -1,5 +1,6 @@
 using Combat.Domain.Services;
 using Combat.Infrastructure.Grpc;
+using Combat.Infrastructure.Messaging;
 using Combat.Infrastructure.Persistence;
 using Combat.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,8 @@ public static class InfrastructureServiceRegistration
             .AddSingleton<IClock, SystemClock>()
             .AddEfConnection()
             .AddRepositories()
-            .AddGrpcConfiguration(configuration);
+            .AddGrpcConfiguration(configuration)
+            .AddMessaging(configuration);
     }
 
     private static IServiceCollection AddRepositories(this IServiceCollection services)
