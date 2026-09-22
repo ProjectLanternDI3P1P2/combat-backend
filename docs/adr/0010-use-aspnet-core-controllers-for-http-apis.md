@@ -1,6 +1,7 @@
 # Use ASP.NET Core Controllers for HTTP APIs
 
-HTTP APIs are implemented with ASP.NET Core Controllers.
+Non-gameplay HTTP APIs are implemented with ASP.NET Core Controllers. Gameplay
+uses SignalR Hubs instead; this ADR does not prescribe their implementation.
 
 ## Considered Options
 
@@ -17,6 +18,9 @@ style across multiple squads.
 
 HTTP endpoints are organized consistently in controller classes across all
 microservices.
+
+Gameplay SignalR endpoints remain separate from controllers and are owned by
+the Player, Dungeon and Combat services.
 
 Controllers remain thin and delegate application behavior through the Application
 layer.

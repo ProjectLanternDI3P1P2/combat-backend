@@ -21,4 +21,4 @@ Removing, renaming or changing the meaning or type of required data creates a ne
 message version.
 
 Consumers must tolerate compatible additions and must not treat a new optional
-JSON field as a breaking change.
+Protocol Buffers field as a breaking change.
