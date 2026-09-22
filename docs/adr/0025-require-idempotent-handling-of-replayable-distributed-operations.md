@@ -5,8 +5,8 @@ against duplicate execution.
 
 ## Considered Options
 
-The future broker delivery guarantee is not selected yet, so the project does not
-assume a specific at-most-once or at-least-once model.
+Kafka is the selected broker and the platform assumes at-least-once delivery
+semantics (ADR-GLOB-002).
 
 Duplicates can still occur in distributed systems through retries, timeouts,
 redelivery or recovery behavior. Ignoring this possibility would make business
