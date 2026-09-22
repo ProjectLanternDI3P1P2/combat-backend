@@ -51,6 +51,23 @@ Handlers depend on the `Application/Ports/IPlayerClient` port and its applicatio
 model, never on Protobuf or gRPC types. The adapter uses the generated typed client,
 maps its response, and applies the configurable `Grpc:Player:TimeoutSeconds` deadline.
 
+`Combat.Contracts` has an independent release line. A change outside
+`Combat.Contracts/` never releases the package. When a contract release is made,
+release-please creates a `contracts-vN.0.0` tag and `publish-contracts.yaml`
+publishes the matching NuGet package to GitHub Packages. The contract number used
+by consumers is therefore V1, V2, V3, and so on; minor and patch contract package
+versions are deliberately never generated. A consuming repository configures its
+NuGet source as `https://nuget.pkg.github.com/<organisation>/index.json` and pins a
+released `Combat.Contracts` version.
+
+The package page appears after the first release. To let a consuming repository's
+GitHub Actions workflow restore the package without a personal token, grant that
+repository `Read` access under **Package settings > Manage Actions access**. Its
+workflow then needs `permissions: { packages: read }` and can authenticate its NuGet
+source with the automatically-provided `GITHUB_TOKEN`. Developers authenticate once
+on their own workstation with a personal access token (classic) scoped to
+`read:packages`; neither kind of token belongs in a repository.
+
 ## Running the stack
 
 ```bash
@@ -110,8 +127,10 @@ feature/xxx --squash--> dev --merge commit--> main --> tag + CHANGELOG
 - Promote by opening a pull request from `dev` to `main` and merging it with a
   **merge commit**. Never squash this one — release-please reads the individual
   commits ([ADR-0002](./docs/adr/0002-merge-strategy-depends-on-the-target-branch.md)).
-- release-please then maintains a release pull request on `main`. Merging it
-  writes the changelog, bumps the version and tags.
+- release-please then maintains independent release pull requests on `main` for
+  the application and the Protocol Buffer contracts. Merging one writes its
+  changelog, bumps only its version and tags it (`vX.Y.Z` for the application,
+  `contracts-vN.0.0` for contracts).
 - A back-merge from `main` to `dev` follows automatically
   ([ADR-0003](./docs/adr/0003-automatic-back-merge-from-main-to-dev.md)).
 
