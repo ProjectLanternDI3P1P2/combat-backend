@@ -27,6 +27,8 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=combat;Username=combat"
     ports:
       - "8080:8080"
+      # Internal gRPC endpoint. Do not expose this port in production Kubernetes ingress.
+      - "127.0.0.1:8081:8081"
 
 volumes:
   postgres-data:

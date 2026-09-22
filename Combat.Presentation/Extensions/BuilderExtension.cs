@@ -1,4 +1,5 @@
 using Combat.Presentation.Extensions.LogExtension;
+using Combat.Presentation.Grpc.Interceptors;
 using Combat.Presentation.Middleware;
 using Serilog;
 
@@ -12,10 +13,12 @@ public static class BuilderExtension
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi();
         builder.Services.AddHealthChecks();
+        builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcExceptionInterceptor>());
 
         ConfigureLogger(builder);
 
         builder.Services.AddTransient<ExceptionHandlingMiddleware>();
+        builder.Services.AddTransient<GrpcExceptionInterceptor>();
         builder.Services.AddHttpClient();
 
         return builder;

@@ -14,6 +14,7 @@ Combat.Domain/          entities, enums, domain services, repository interfaces
 Combat.Application/     commands, queries, handlers, validators, pipeline behaviours
 Combat.Infrastructure/  EF Core, repository implementations, external services
 Combat.Presentation/    HTTP API: controllers, DTOs, middleware
+Combat.Contracts/       owned Protobuf contracts and generated gRPC client/server types
 Combat.Test/            xUnit tests for all of the above
 ```
 
@@ -29,6 +30,43 @@ dotnet build Combat.Presentation.slnx
 dotnet test --solution Combat.Presentation.slnx
 dotnet run --project Combat.Presentation/Combat.Presentation.csproj
 ```
+
+## Internal gRPC contract
+
+`Combat.Contracts` owns the versioned `combat_player_v1.proto` contract and the
+generated C# gRPC types. It is referenced locally by the server projects; it never
+pulls this service's Domain or Application types into the wire contract.
+
+The template exposes `CombatPlayerService/GetPlayer` on its internal gRPC endpoint.
+The REST API remains the client-facing interface. Locally, gRPC listens on
+`http://localhost:8081`; Docker binds it only to loopback. In Kubernetes, expose
+that port through an internal-only Service, never through the ingress.
+
+Concrete gRPC service implementations in `Presentation/Grpc/Services` are mapped
+automatically at startup. A new service only needs to inherit from its generated
+contract base class; no additional `MapGrpcService<T>()` call is needed.
+
+`Infrastructure/Grpc/Clients/PlayerGrpcClient` shows the consumer-side pattern.
+Handlers depend on the `Application/Ports/IPlayerClient` port and its application
+model, never on Protobuf or gRPC types. The adapter uses the generated typed client,
+maps its response, and applies the configurable `Grpc:Player:TimeoutSeconds` deadline.
+
+`Combat.Contracts` has an independent release line. A change outside
+`Combat.Contracts/` never releases the package. When a contract release is made,
+release-please creates a `contracts-vN.0.0` tag and `publish-contracts.yaml`
+publishes the matching NuGet package to GitHub Packages. The contract number used
+by consumers is therefore V1, V2, V3, and so on; minor and patch contract package
+versions are deliberately never generated. A consuming repository configures its
+NuGet source as `https://nuget.pkg.github.com/<organisation>/index.json` and pins a
+released `Combat.Contracts` version.
+
+The package page appears after the first release. To let a consuming repository's
+GitHub Actions workflow restore the package without a personal token, grant that
+repository `Read` access under **Package settings > Manage Actions access**. Its
+workflow then needs `permissions: { packages: read }` and can authenticate its NuGet
+source with the automatically-provided `GITHUB_TOKEN`. Developers authenticate once
+on their own workstation with a personal access token (classic) scoped to
+`read:packages`; neither kind of token belongs in a repository.
 
 ## Running the stack
 
@@ -89,8 +127,10 @@ feature/xxx --squash--> dev --merge commit--> main --> tag + CHANGELOG
 - Promote by opening a pull request from `dev` to `main` and merging it with a
   **merge commit**. Never squash this one — release-please reads the individual
   commits ([ADR-0002](./docs/adr/0002-merge-strategy-depends-on-the-target-branch.md)).
-- release-please then maintains a release pull request on `main`. Merging it
-  writes the changelog, bumps the version and tags.
+- release-please then maintains independent release pull requests on `main` for
+  the application and the Protocol Buffer contracts. Merging one writes its
+  changelog, bumps only its version and tags it (`vX.Y.Z` for the application,
+  `contracts-vN.0.0` for contracts).
 - A back-merge from `main` to `dev` follows automatically
   ([ADR-0003](./docs/adr/0003-automatic-back-merge-from-main-to-dev.md)).
 
