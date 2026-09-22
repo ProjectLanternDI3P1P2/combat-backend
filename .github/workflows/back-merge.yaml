@@ -7,7 +7,7 @@ name: Back-merge
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'contracts-v*']
   workflow_dispatch:
 
 permissions:

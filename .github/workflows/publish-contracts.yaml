@@ -1,10 +1,10 @@
 name: Publish Protocol Buffer contracts
 
-# release-please creates vX.Y.Z tags on main. Publishing only from tags ensures
-# consumers can depend on an immutable, released contract version.
+# The contracts component creates contracts-vN.0.0 tags on main. Publishing only
+# from those tags ensures consumers can depend on an immutable contract Vn.
 on:
   push:
-    tags: ["v*"]
+    tags: ["contracts-v*"]
 
 permissions:
   contents: read

@@ -23,8 +23,11 @@ A microservice SHALL NOT reference the Domain or Application project of another 
 Contracts SHALL evolve backward-compatibly whenever possible.
 Protocol Buffer field numbers SHALL NOT be reused.
 Removed field numbers SHOULD be reserved.
-Breaking changes SHALL require an explicit major contract version.
-Contract packages SHALL follow semantic versioning and SHOULD be published through CI/CD.
+Every released contract change SHALL create the next explicit contract version:
+V1, V2, V3, and so on. The corresponding NuGet version and Git tag SHALL be
+`N.0.0` and `contracts-vN.0.0`. Contract versions are independent from the
+application version and are incremented only for changes under the contract
+package directory. Contract packages SHOULD be published through CI/CD.
 
 ## Consequences
 - Each producer remains the source of truth for its contracts.
