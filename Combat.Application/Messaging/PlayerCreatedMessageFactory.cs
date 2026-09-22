@@ -12,8 +12,11 @@ public static class PlayerCreatedMessageFactory
     {
         PlayerCreated payload = new()
         {
-            PlayerId = playerId.ToString(), Name = name, Attack = attack,
-            Health = health, MaxHealth = maxHealth
+            PlayerId = playerId.ToString(),
+            Name = name,
+            Attack = attack,
+            Health = health,
+            MaxHealth = maxHealth
         };
 
         Guid messageId = Guid.NewGuid();
