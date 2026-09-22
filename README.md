@@ -14,6 +14,7 @@ Combat.Domain/          entities, enums, domain services, repository interfaces
 Combat.Application/     commands, queries, handlers, validators, pipeline behaviours
 Combat.Infrastructure/  EF Core, repository implementations, external services
 Combat.Presentation/    HTTP API: controllers, DTOs, middleware
+Combat.Contracts/       owned Protobuf contracts and generated gRPC client/server types
 Combat.Test/            xUnit tests for all of the above
 ```
 
@@ -29,6 +30,26 @@ dotnet build Combat.Presentation.slnx
 dotnet test --solution Combat.Presentation.slnx
 dotnet run --project Combat.Presentation/Combat.Presentation.csproj
 ```
+
+## Internal gRPC contract
+
+`Combat.Contracts` owns the versioned `combat_player_v1.proto` contract and the
+generated C# gRPC types. It is referenced locally by the server projects; it never
+pulls this service's Domain or Application types into the wire contract.
+
+The template exposes `CombatPlayerService/GetPlayer` on its internal gRPC endpoint.
+The REST API remains the client-facing interface. Locally, gRPC listens on
+`http://localhost:8081`; Docker binds it only to loopback. In Kubernetes, expose
+that port through an internal-only Service, never through the ingress.
+
+Concrete gRPC service implementations in `Presentation/Grpc/Services` are mapped
+automatically at startup. A new service only needs to inherit from its generated
+contract base class; no additional `MapGrpcService<T>()` call is needed.
+
+`Infrastructure/Grpc/Clients/PlayerGrpcClient` shows the consumer-side pattern.
+Handlers depend on the `Application/Ports/IPlayerClient` port and its application
+model, never on Protobuf or gRPC types. The adapter uses the generated typed client,
+maps its response, and applies the configurable `Grpc:Player:TimeoutSeconds` deadline.
 
 ## Running the stack
 

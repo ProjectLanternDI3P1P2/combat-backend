@@ -1,5 +1,4 @@
 using Combat.Domain.Entities;
-using Combat.Domain.Exceptions;
 using Combat.Domain.Repositories;
 using MediatR;
 
@@ -12,7 +11,7 @@ public sealed class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository
         Player? player = await playerRepository.GetPlayerByIdAsync(request.PlayerId, cancellationToken);
 
         return player == null
-            ? throw new PlayerNotFoundException(request.PlayerId)
+            ? throw new KeyNotFoundException($"Player not found with PlayerId '{request.PlayerId}'.")
             : new GetPlayerByIdResult
             {
                 Id = player.Id,

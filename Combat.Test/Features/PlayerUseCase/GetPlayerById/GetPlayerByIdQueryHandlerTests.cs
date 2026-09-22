@@ -1,7 +1,6 @@
 using Bogus;
 using Combat.Application.Features.PlayerUseCase.GetPlayerById;
 using Combat.Domain.Entities;
-using Combat.Domain.Exceptions;
 using Combat.Domain.Repositories;
 using FluentAssertions;
 using Moq;
@@ -50,7 +49,7 @@ public class GetPlayerByIdQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PlayerDoesNotExist_ThrowsPlayerNotFoundException()
+    public async Task Handle_PlayerDoesNotExist_ThrowsKeyNotFoundException()
     {
         // Arrange
         var playerId = Guid.NewGuid();
@@ -63,7 +62,7 @@ public class GetPlayerByIdQueryHandlerTests
         Func<Task> act = async () => await _handler.Handle(new GetPlayerByIdQuery(playerId), TestContext.Current.CancellationToken);
 
         // Assert
-        await act.Should().ThrowAsync<PlayerNotFoundException>()
+        await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage($"*{playerId}*");
     }
 }
