@@ -1,14 +1,17 @@
-# Use REST for client APIs and gRPC for synchronous inter-service calls
+# Use REST for non-gameplay client APIs, SignalR for gameplay, and gRPC for synchronous inter-service calls
 
-Client-facing backend APIs use REST over HTTP.
+Non-gameplay client-facing backend APIs use REST over HTTP.
+
+Gameplay commands and state updates use SignalR over WebSocket, for both solo and multiplayer play.
 
 Synchronous communication between backend microservices uses gRPC.
 
 ## Considered Options
 
-REST is the established interaction model for frontend clients and fits the
-resource-oriented APIs exposed by the project. No competing client-facing API
-style provided a clear benefit.
+REST is the established interaction model for resource-oriented frontend
+operations such as profile, inventory and progression. Gameplay needs server
+push and a single interaction model shared by solo and multiplayer modes;
+SignalR provides that model over WebSocket.
 
 For service-to-service communication, gRPC is designed for application-to-
 application calls, provides strongly defined contracts and uses an efficient
@@ -19,9 +22,10 @@ benefits for internal synchronous communication.
 
 ## Consequences
 
-Presentation exposes versioned REST endpoints for frontend and external clients.
+Presentation exposes versioned REST endpoints for non-gameplay frontend
+operations and service-owned SignalR Hubs for gameplay. Both are exposed only
+through the API Gateway.
 
 Internal synchronous contracts are defined separately as gRPC contracts.
 
-Asynchronous communication remains independent from this choice and will use the
-message broker selected later.
+Asynchronous communication uses RabbitMQ with versioned Protocol Buffers contracts.
