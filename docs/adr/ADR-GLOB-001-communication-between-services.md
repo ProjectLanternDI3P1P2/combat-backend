@@ -12,7 +12,7 @@ Non-gameplay external client communication SHALL use HTTP REST APIs with JSON pa
 Gameplay interactions, in solo and multiplayer modes, SHALL use SignalR over WebSocket through the API Gateway. The Gateway routes each Hub connection to the owning microservice; it does not own gameplay state.
 Synchronous microservice-to-microservice communication SHALL use gRPC with Protocol Buffers.
 gRPC endpoints SHALL only be reachable from the internal Kubernetes network.
-Asynchronous interservice communication SHALL use Kafka with versioned Protocol Buffers contracts.
+Asynchronous interservice communication SHALL use RabbitMQ with versioned Protocol Buffers contracts.
 
 Use gRPC when the caller requires the result immediately to complete the current operation.
 Use asynchronous messaging when processing can be deferred and the caller only needs to publish a business event.
@@ -27,7 +27,7 @@ Independent gRPC calls MAY be executed in parallel.
 - SignalR provides one real-time gameplay interaction model for both solo and multiplayer modes.
 - gRPC provides efficient and strongly typed internal communication.
 - Messaging reduces coupling for deferred workflows.
-- The platform must maintain REST, SignalR, gRPC and Kafka communication stacks.
+- The platform must maintain REST, SignalR, gRPC and RabbitMQ communication stacks.
 - Deep synchronous dependency chains are prevented.
 
 ## Alternatives Considered
