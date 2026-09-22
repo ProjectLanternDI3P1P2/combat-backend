@@ -74,7 +74,8 @@ on their own workstation with a personal access token (classic) scoped to
 docker compose up -d --build
 ```
 
-The API listens on <http://localhost:8080>, Postgres on host port 5433. Because
+The API listens on <http://localhost:8080>, Postgres on host port 5433, and the
+RabbitMQ management UI on <http://localhost:15672> (`combat` / `combat`). Because
 `ASPNETCORE_ENVIRONMENT` is `Development`, the OpenAPI document is served at
 `/openapi/v1.json` and the Scalar UI at `/scalar`.
 
@@ -113,6 +114,21 @@ PostgreSQL is configured through the `ConnectionStrings` section.
 
 `PasswordFile` is optional. It injects the password from a Docker or Kubernetes
 secret instead of storing it in the configuration file.
+
+## Asynchronous messaging
+
+`IMessagePublisher` is the application seam for integration messages; its
+`MessageEnvelope` contains no RabbitMQ type. `RabbitMqMessagePublisher` is the
+RabbitMQ adapter registered when `RabbitMq:Enabled` is true. It serializes the
+broker-independent Protobuf envelope from `combat_events_v1.proto`, declares the
+durable `combat.events` topic exchange, and publishes each event with the routing
+key `<type>.v<version>`.
+
+Creating a player publishes `combat.player.created.v1`, whose payload is the
+versioned `PlayerCreated` Protobuf message. In Compose, the adapter connects to
+the `rabbitmq` service. For a local run without the broker, leave `Enabled` false;
+the no-op adapter keeps the application runnable while preserving the same
+application interface.
 
 ## Branching flow
 

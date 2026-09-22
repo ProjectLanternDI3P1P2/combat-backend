@@ -24,9 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\\combat_player_v1.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos/combat_player_v1.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos/combat_events_v1.proto" GrpcServices="None" />
     <!-- Consumers that use another language can retrieve the source contract from the package. -->
-    <None Update="Protos\\combat_player_v1.proto" Pack="true" PackagePath="proto" />
+    <None Include="Protos/combat_player_v1.proto" Pack="true" PackagePath="proto" />
+    <None Include="Protos/combat_events_v1.proto" Pack="true" PackagePath="proto" />
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
