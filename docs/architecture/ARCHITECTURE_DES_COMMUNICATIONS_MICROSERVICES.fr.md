@@ -23,7 +23,7 @@ flowchart TB
   Dungeon[Dungeon\nDungeonRuns, salles, déplacements]
   Combat[Combat\ntours, état et résolution]
   Rewards[Rewards\nloot, inventaire, équipement, marketplace]
-  Progression[Progression\nXP et leaderboard]
+  Progression[Progression\nXP, statistiques et leaderboard]
   RabbitMQ[(RabbitMQ)]
   Site -->|OIDC / HTTPS| Keycloak
   Client -->|OIDC / HTTPS| Keycloak
@@ -42,8 +42,10 @@ flowchart TB
   Combat -->|gRPC| Player
   Combat -->|gRPC| Rewards
   Combat -->|gRPC| Dungeon
-  Combat -->|publie| RabbitMQ
-  Dungeon -->|publie| RabbitMQ
+  Player -->|publie faits de session| RabbitMQ
+  Dungeon -->|publie faits de run| RabbitMQ
+  Combat -->|publie faits de combat| RabbitMQ
+  Rewards -->|publie faits de récompense| RabbitMQ
   RabbitMQ -->|livre| Rewards
   RabbitMQ -->|livre| Progression
   RabbitMQ -->|livre| Player
@@ -132,6 +134,61 @@ Combat persiste les snapshots Player et Rewards obtenus à sa création. Un chan
 
 ## 5. Échanges RabbitMQ asynchrones
 
+### 5.1 Flux statistiques centralisés vers Progression
+
+**Player, Dungeon, Combat et Rewards publient leurs faits statistiques vers
+Progression.** Progression centralise les statistiques, l'historique, l'XP et
+les projections de leaderboard. Cette centralisation ne transfère pas
+l'ownership : le producteur reste la source de vérité et Progression conserve
+des faits immuables avec ses propres projections dérivées.
+
+Chaque producteur écrit son changement d'état et un message d'outbox dans sa
+transaction locale ; un worker publie l'outbox vers RabbitMQ. Ainsi, un fait
+statistique n'est pas perdu si la publication échoue après le changement
+métier. Les files durables de Progression sont liées à toutes les clés de
+routage statistiques, indépendamment des files Player et Rewards.
+
+| Clé de routage | Producteur | Déclencheur | Projection Progression |
+|---|---|---|---|
+| `player.game-session-started.v1` | Player | Session démarrée et liée à un run | Participation et compteurs de session |
+| `player.game-session-ended.v1` | Player | Session fermée | Fin effective de participation |
+| `player.hero-created.v1` | Player | Héros créé | Créations de héros et répartition des archétypes |
+| `player.game-session-member-joined.v1` | Player | Participant ajouté au roster avant verrouillage | Taille et composition des groupes |
+| `dungeon.dungeon-run-started.v1` | Dungeon | Run créé | Run et dimensions statistiques non sensibles |
+| `dungeon.room-entered.v1` | Dungeon | Salle effectivement entrée | Exploration, progression et compteurs de salles |
+| `dungeon.chest-opened.v1` | Dungeon | Coffre marqué ouvert après confirmation Rewards | Exploration des coffres, distincte du loot attribué |
+| `dungeon.dungeon-run-ended.v1` | Dungeon | Run `Won`, `Lost` ou `Abandoned` | Issue, durée et compteurs finaux |
+| `combat.combat-started.v1` | Combat | Snapshots de début persistés et combat jouable | Nombre de combats, participants, rencontre et contexte de difficulté |
+| `combat.action-resolved.v1` | Combat | Toute action acceptée et résolue : attaque, compétence, défense, passe ou potion | Actions, dégâts/soins, cibles, effets, tours et performance par héros |
+| `combat.combat-completed.v1` | Combat | Combat terminé, résultat Dungeon accepté | Victoire/défaite, statistiques de combat et XP applicable |
+| `rewards.reward-granted.v1` | Rewards | Droit à récompense persisté | Loot et valeur de récompense |
+| `rewards.inventory-item-consumed.v1` | Rewards | Consommation durable appliquée | Usage de consommable |
+| `rewards.equipment-changed.v1` | Rewards | Équipement/déséquipement hors combat confirmé | Statistiques d'équipement |
+| `rewards.purchase-completed.v1` | Rewards | Achat marketplace/paiement confirmé | Statistique économique |
+
+`combat.combat-completed.v1` est désormais produit pour une victoire comme pour
+une défaite, après acceptation du résultat par Dungeon. Une victoire attend la
+confirmation de reward ; une défaite ne crée aucune reward. Progression décide
+à partir du résultat si une attribution d'XP est applicable. La ligne du
+catalogue historique ci-dessous doit être lue avec cette sémantique.
+
+`combat.action-resolved.v1` est émis **une fois par action acceptée et résolue**,
+après la mise à jour atomique de l'état Combat et de l'outbox. Il couvre les
+attaques, compétences, défenses, passages de tour et potions. Le payload porte
+notamment `CombatId`, `TurnNumber`, acteur, type d'action, cibles, résultats
+agrégés (dégâts, soins, effets) et `CommandId`. Les commandes refusées, les
+lectures de snapshot et les rediffusions SignalR n'émettent aucun fait
+statistique. La consommation durable d'une potion reste confirmée par Rewards
+via `rewards.inventory-item-consumed.v1` ; elle ne doit pas être comptée deux
+fois par Progression.
+
+Les événements de statistiques ne portent que les identifiants et mesures utiles
+(`PlayerId`/`HeroId` pseudonymisés si nécessaire, identifiants de session, run
+ou combat, résultat, compteurs et horodatages) ; ils ne transportent ni secrets,
+ni jetons, ni snapshots complets d'inventaire ou de combat. Une correction ou un
+enrichissement est un nouvel événement : Progression ne modifie jamais les
+données détenues par un autre service.
+
 RabbitMQ transporte des faits métier sans réponse immédiate. Sa redélivrance fournit un traitement at-least-once et impose des consommateurs idempotents. Chaque payload est un contrat Protobuf versionné du package producteur, dans une enveloppe avec `messageId`, `correlationId`, `causationId`, `messageType`, `version`, `occurredAt`, `producer` et payload typé.
 
 Les événements sont publiés dans des exchanges durables avec des clés de routage versionnées. Chaque service consommateur possède une file durable liée aux clés de routage qu'il consomme. Les messages ne sont acquittés qu'après un traitement réussi ; les retries et le routage vers une dead-letter exchange prennent en charge les échecs sans coupler producteurs et consommateurs.
@@ -139,8 +196,8 @@ Les événements sont publiés dans des exchanges durables avec des clés de rou
 | Clé de routage | Producteur → file du consommateur | Publication | Effet consommateur |
 |---|---|---|---|
 | `combat.consumable-used.v1` | Combat → Rewards | Potion déjà appliquée au snapshot Combat local | Consomme une fois l'objet ; `CommandId`, héros, item, quantité. |
-| `combat.combat-completed.v1` | Combat → Progression | Combat gagné, reward confirmée, résultat Dungeon accepté | Attribue XP une fois et met à jour projections ; XP non temps réel. |
-| `dungeon.dungeon-run-ended.v1` | Dungeon → Player | Run `Won`, `Lost` ou `Abandoned` | Ferme `GameSession`, diffuse `SessionStateChanged`. |
+| `combat.combat-completed.v1` | Combat → Progression | Combat terminé, résultat Dungeon accepté ; reward confirmée en cas de victoire | Enregistre les statistiques ; attribue l'XP une fois si le résultat l'autorise. |
+| `dungeon.dungeon-run-ended.v1` | Dungeon → Player et Progression | Run `Won`, `Lost` ou `Abandoned` | Player ferme `GameSession` ; Progression enregistre issue, durée et compteurs finaux. |
 
 La Gateway ne consomme jamais de messages RabbitMQ. Un consommateur ne modifie que son propre état puis expose un effet client par son API REST ou son Hub.
 
@@ -204,7 +261,7 @@ sequenceDiagram
   X->>X: Attribution XP unique
 ```
 
-`CombatCompleted` est produit après confirmation de reward et acceptation Dungeon. Une défaite reporte `Lost`, sans reward et sans `CombatCompleted`.
+`CombatCompleted` est produit après acceptation Dungeon, pour une victoire comme pour une défaite, afin que Progression dispose de statistiques complètes. Une victoire ne le publie qu'après confirmation de reward ; une défaite ne crée aucune reward. Progression décide, à partir du résultat, si une attribution d'XP est applicable.
 
 ### Potion et fin de run
 
@@ -216,18 +273,33 @@ sequenceDiagram
   participant R as Rewards
   participant D as Dungeon
   participant P as Player
+  participant X as Progression
   F->>C: ConsumePotion(CommandId, itemId)
   C->>C: Met à jour snapshot Combat local
   C-->>F: CombatStateChanged(snapshot)
+  C->>M: Publie combat.action-resolved.v1
+  M->>X: Livre ActionResolved
   C->>M: Publie combat.consumable-used.v1
   M->>R: Livre ; consomme item une seule fois
+  R->>M: Publie rewards.inventory-item-consumed.v1
+  M->>X: Livre InventoryItemConsumed
   D->>M: Publie dungeon.dungeon-run-ended.v1
   M->>P: Livre DungeonRunEnded
+  M->>X: Livre DungeonRunEnded
   P->>P: Ferme GameSession
   P-->>P: PlayerHub SessionStateChanged
 ```
 
 ## 7. Fiabilité, cohérence et observabilité
+
+### Statistiques asynchrones
+
+Progression déduplique chaque fait reçu par `messageId` et par clé métier avant
+de le persister dans son historique et de mettre à jour ses projections. Le
+rejeu de l'outbox et la redélivrance RabbitMQ ne doivent donc ni doubler l'XP,
+ni les compteurs, ni les classements. Progression ne rappelle pas un producteur
+pour reconstruire une statistique ; l'événement versionné est son contrat de
+lecture.
 
 | Sujet | Règle |
 |---|---|
