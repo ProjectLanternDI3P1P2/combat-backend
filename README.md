@@ -58,6 +58,14 @@ version and publishes it to GitHub Packages. A consuming repository configures i
 NuGet source as `https://nuget.pkg.github.com/<organisation>/index.json` and pins a
 released `Combat.Contracts` version.
 
+The package page appears after the first release. To let a consuming repository's
+GitHub Actions workflow restore the package without a personal token, grant that
+repository `Read` access under **Package settings > Manage Actions access**. Its
+workflow then needs `permissions: { packages: read }` and can authenticate its NuGet
+source with the automatically-provided `GITHUB_TOKEN`. Developers authenticate once
+on their own workstation with a personal access token (classic) scoped to
+`read:packages`; neither kind of token belongs in a repository.
+
 ## Running the stack
 
 ```bash

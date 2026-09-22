@@ -8,6 +8,10 @@
     <PackageId>Combat.Contracts</PackageId>
     <Description>Public Protocol Buffers and generated gRPC types exposed by the Combat service.</Description>
     <PackageTags>grpc;protobuf;contracts</PackageTags>
+    <PackageProjectUrl>https://github.com/ProjectLanternDI3P1P2/dotnet-backend-template</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ProjectLanternDI3P1P2/dotnet-backend-template.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
@@ -23,6 +27,7 @@
     <Protobuf Include="Protos\\combat_player_v1.proto" GrpcServices="Both" />
     <!-- Consumers that use another language can retrieve the source contract from the package. -->
     <None Update="Protos\\combat_player_v1.proto" Pack="true" PackagePath="proto" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
