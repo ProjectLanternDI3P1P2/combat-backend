@@ -48,10 +48,11 @@
 | Authentication | Keycloak |
 | Logging | Serilog |
 | Distributed observability | OpenTelemetry |
-| Async message format | JSON |
+| Asynchronous message broker | RabbitMQ |
+| Async message format | Protocol Buffers |
 | Async message metadata | Common envelope |
 | Message contract versioning | Mandatory |
-| Queue/topic logical naming | Common convention |
+| Exchange, routing key and queue naming | Common convention |
 | Unit test framework | xUnit |
 | Test SDK | Microsoft.NET.Test.Sdk |
 | Mocking | Moq |
