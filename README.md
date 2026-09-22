@@ -85,17 +85,17 @@ curl http://localhost:8080/health/ready
 docker compose down -v   # -v also drops the database volume
 ```
 
-**The schema does not exist yet.** There are no EF Core migrations, and nothing
-calls `EnsureCreated`, so `/api/v1/players` fails against an empty database while
-the health endpoints still answer — they check nothing. Migration execution is
-listed as an open decision in
-[BACKEND_TECHNICAL_DECISIONS.md](./BACKEND_TECHNICAL_DECISIONS.md); until it is
-settled, create the schema by hand or add migrations to your own service.
+Apply the EF Core migrations before calling endpoints that persist data:
+
+```powershell
+dotnet tool restore
+dotnet tool run dotnet-ef database update --project Combat.Infrastructure --startup-project Combat.Infrastructure
+```
 
 ## Toolchain
 
 The SDK version is pinned in `global.json`; `dotnet tool restore` installs the
-coverage collector and the git-hook runner declared in `dotnet-tools.json`.
+coverage collector, EF Core Tools, and the git-hook runner declared in `dotnet-tools.json`.
 Run `dotnet husky install` once per clone to enable the pre-commit hook — git
 hook paths are local configuration and cannot be committed.
 
@@ -114,6 +114,27 @@ PostgreSQL is configured through the `ConnectionStrings` section.
 
 `PasswordFile` is optional. It injects the password from a Docker or Kubernetes
 secret instead of storing it in the configuration file.
+
+## Database migrations
+
+`Combat.Infrastructure` owns both the migrations and the design-time
+`CombatDbContextFactory`; it is used as both the target and startup project for
+EF Core Tools. This keeps `Combat.Presentation` free of the EF Core Design
+dependency. The factory loads the Presentation configuration from the repository
+root and lets `ConnectionStrings__DefaultConnection` override it.
+
+```powershell
+dotnet tool restore
+dotnet tool run dotnet-ef migrations add <MigrationName> --project Combat.Infrastructure --startup-project Combat.Infrastructure
+dotnet tool run dotnet-ef database update --project Combat.Infrastructure --startup-project Combat.Infrastructure
+```
+
+If you created the `Players` table manually while testing, start with a fresh
+local volume (`docker compose down -v`, then `docker compose up -d`) before the
+first `database update`; the initial migration must create that table itself.
+
+For host-based development, `appsettings.Development.json` targets the Compose
+PostgreSQL port `5433`. The Compose API uses its own `postgres:5432` connection.
 
 ## Asynchronous messaging
 
