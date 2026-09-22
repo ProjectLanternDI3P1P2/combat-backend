@@ -28,4 +28,4 @@ through the API Gateway.
 
 Internal synchronous contracts are defined separately as gRPC contracts.
 
-Asynchronous communication uses Kafka with versioned Protocol Buffers contracts.
+Asynchronous communication uses RabbitMQ with versioned Protocol Buffers contracts.

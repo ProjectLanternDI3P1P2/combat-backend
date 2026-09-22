@@ -5,7 +5,7 @@ against duplicate execution.
 
 ## Considered Options
 
-Kafka is the selected broker and the platform assumes at-least-once delivery
+RabbitMQ is the selected broker and the platform assumes at-least-once delivery
 semantics (ADR-GLOB-002).
 
 Duplicates can still occur in distributed systems through retries, timeouts,

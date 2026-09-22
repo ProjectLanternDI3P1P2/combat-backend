@@ -1,6 +1,6 @@
 # Architecture des communications microservices
 
-> Référence détaillée de la cible MVP : frontend, Traefik, Keycloak, Player, Dungeon, Combat, Rewards, Progression et Kafka.
+> Référence détaillée de la cible MVP : frontend, Traefik, Keycloak, Player, Dungeon, Combat, Rewards, Progression et RabbitMQ.
 
 ## 1. Vue macro
 
@@ -11,7 +11,7 @@ Le produit compte exactement cinq microservices métier : **Player**, **Dungeon*
 | Fonction frontend hors gameplay | HTTPS/REST, JSON | Frontend → Traefik → service propriétaire |
 | Gameplay solo et multijoueur | SignalR sur WebSocket | Client de jeu → Traefik → Hub propriétaire |
 | Résultat interne immédiat | gRPC, Protobuf | Service → service, réseau interne |
-| Fait métier différable | Kafka, Protobuf versionné | Producteur → consommateur indépendant |
+| Fait métier différable | RabbitMQ, Protobuf versionné | Producteur → consommateur indépendant |
 
 ```mermaid
 flowchart TB
@@ -24,7 +24,7 @@ flowchart TB
   Combat[Combat\ntours, état et résolution]
   Rewards[Rewards\nloot, inventaire, équipement, marketplace]
   Progression[Progression\nXP et leaderboard]
-  Kafka[(Kafka)]
+  RabbitMQ[(RabbitMQ)]
   Site -->|OIDC / HTTPS| Keycloak
   Client -->|OIDC / HTTPS| Keycloak
   Site -->|HTTPS REST| Gateway
@@ -42,17 +42,17 @@ flowchart TB
   Combat -->|gRPC| Player
   Combat -->|gRPC| Rewards
   Combat -->|gRPC| Dungeon
-  Combat -->|produit| Kafka
-  Dungeon -->|produit| Kafka
-  Kafka -->|consomme| Rewards
-  Kafka -->|consomme| Progression
-  Kafka -->|consomme| Player
+  Combat -->|publie| RabbitMQ
+  Dungeon -->|publie| RabbitMQ
+  RabbitMQ -->|livre| Rewards
+  RabbitMQ -->|livre| Progression
+  RabbitMQ -->|livre| Player
 ```
 
 ### Règles de frontière
 
 - Traefik valide le jeton Keycloak, retire/remplace les headers internes forgés par le client et transmet `UserId`, `Username`, rôles et `CorrelationId` comme claims de confiance.
-- Traefik proxy les upgrades WebSocket et les Hubs ; il ne conserve pas d'état gameplay, ne consomme pas Kafka et ne devient pas un BFF.
+- Traefik proxy les upgrades WebSocket et les Hubs ; il ne conserve pas d'état gameplay, ne consomme pas les messages RabbitMQ et ne devient pas un BFF.
 - Chaque service autorise sa ressource. Un jeton valide ne donne jamais accès à la session, au donjon ou au combat d'un autre joueur.
 - Aucun microservice n'est exposé directement à Internet et aucun ne lit/écrit la base d'un autre service.
 
@@ -130,17 +130,19 @@ Les contrats gRPC sont des packages NuGet Protobuf versionnés et possédés par
 
 Combat persiste les snapshots Player et Rewards obtenus à sa création. Un changement d'équipement ultérieur ne modifie pas ce combat. Le frontend bloque équiper/déséquiper en combat ; le MVP n'ajoute pas de réservation backend.
 
-## 5. Échanges Kafka asynchrones
+## 5. Échanges RabbitMQ asynchrones
 
-Kafka transporte des faits métier sans réponse immédiate. Sa livraison at-least-once impose des consommateurs idempotents. Chaque payload est un contrat Protobuf versionné du package producteur, dans une enveloppe avec `messageId`, `correlationId`, `causationId`, `messageType`, `version`, `occurredAt`, `producer` et payload typé.
+RabbitMQ transporte des faits métier sans réponse immédiate. Sa redélivrance fournit un traitement at-least-once et impose des consommateurs idempotents. Chaque payload est un contrat Protobuf versionné du package producteur, dans une enveloppe avec `messageId`, `correlationId`, `causationId`, `messageType`, `version`, `occurredAt`, `producer` et payload typé.
 
-| Topic | Producteur → consommateur | Publication | Effet consommateur |
+Les événements sont publiés dans des exchanges durables avec des clés de routage versionnées. Chaque service consommateur possède une file durable liée aux clés de routage qu'il consomme. Les messages ne sont acquittés qu'après un traitement réussi ; les retries et le routage vers une dead-letter exchange prennent en charge les échecs sans coupler producteurs et consommateurs.
+
+| Clé de routage | Producteur → file du consommateur | Publication | Effet consommateur |
 |---|---|---|---|
 | `combat.consumable-used.v1` | Combat → Rewards | Potion déjà appliquée au snapshot Combat local | Consomme une fois l'objet ; `CommandId`, héros, item, quantité. |
 | `combat.combat-completed.v1` | Combat → Progression | Combat gagné, reward confirmée, résultat Dungeon accepté | Attribue XP une fois et met à jour projections ; XP non temps réel. |
 | `dungeon.dungeon-run-ended.v1` | Dungeon → Player | Run `Won`, `Lost` ou `Abandoned` | Ferme `GameSession`, diffuse `SessionStateChanged`. |
 
-La Gateway ne consomme jamais Kafka. Un consommateur ne modifie que son propre état puis expose un effet client par son API REST ou son Hub.
+La Gateway ne consomme jamais de messages RabbitMQ. Un consommateur ne modifie que son propre état puis expose un effet client par son API REST ou son Hub.
 
 ## 6. Séquences critiques
 
@@ -186,7 +188,7 @@ sequenceDiagram
   participant C as Combat
   participant P as Player
   participant R as Rewards
-  participant K as Kafka
+  participant M as RabbitMQ
   participant X as Progression
   D->>C: gRPC CreateCombat(contexte salle)
   C->>P: gRPC GetCombatantSnapshot
@@ -197,8 +199,8 @@ sequenceDiagram
   R-->>C: Reward confirmée
   C->>D: gRPC ReportCombatResult(Won)
   D-->>C: Transition acceptée
-  C->>K: Produit combat.combat-completed.v1
-  K->>X: Livre CombatCompleted
+  C->>M: Publie combat.combat-completed.v1
+  M->>X: Livre CombatCompleted
   X->>X: Attribution XP unique
 ```
 
@@ -210,17 +212,17 @@ sequenceDiagram
 sequenceDiagram
   participant F as Client de jeu
   participant C as CombatHub / Combat
-  participant K as Kafka
+  participant M as RabbitMQ
   participant R as Rewards
   participant D as Dungeon
   participant P as Player
   F->>C: ConsumePotion(CommandId, itemId)
   C->>C: Met à jour snapshot Combat local
   C-->>F: CombatStateChanged(snapshot)
-  C->>K: Produit combat.consumable-used.v1
-  K->>R: Consomme item une seule fois
-  D->>K: Produit dungeon.dungeon-run-ended.v1
-  K->>P: Livre DungeonRunEnded
+  C->>M: Publie combat.consumable-used.v1
+  M->>R: Livre ; consomme item une seule fois
+  D->>M: Publie dungeon.dungeon-run-ended.v1
+  M->>P: Livre DungeonRunEnded
   P->>P: Ferme GameSession
   P-->>P: PlayerHub SessionStateChanged
 ```
@@ -233,8 +235,8 @@ sequenceDiagram
 | Doublon événement | Dédupliquer par `messageId` ou clé métier : jamais deux consommations, XP ou clôtures incohérentes. |
 | Timeout gRPC | Résultat inconnu ; retry seulement avec même clé d'idempotence. |
 | Reward obligatoire | Coffre/victoire = barrières synchrones ; échec = pending/retryable, jamais faussement terminé. |
-| Délai Kafka | Cohérence éventuelle dans état propriétaire ; Gateway n'attend jamais un consommateur. |
-| Traces | `CorrelationId` traverse Gateway, Hub, gRPC et Kafka ; `CausationId` relie les événements dérivés. |
+| Délai RabbitMQ | Cohérence éventuelle dans état propriétaire ; Gateway n'attend jamais un consommateur. |
+| Traces | `CorrelationId` traverse Gateway, Hub, gRPC et RabbitMQ ; `CausationId` relie les événements dérivés. |
 | Logs | Inclure `GameSessionId`, `DungeonId`, `CombatId`, héros, `CommandId`, cause reward et `messageId`. |
 
 ## 8. Non mis en place à l'initialisation

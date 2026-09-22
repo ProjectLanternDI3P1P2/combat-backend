@@ -1,7 +1,7 @@
 # Microservice communication architecture
 
 > Detailed MVP reference for communications between the frontend, Traefik,
-> Keycloak, Player, Dungeon, Combat, Rewards, Progression and Kafka.
+> Keycloak, Player, Dungeon, Combat, Rewards, Progression and RabbitMQ.
 
 ## 1. Macro view
 
@@ -15,7 +15,7 @@ technical identity provider, not a business microservice.
 | Non-gameplay frontend operation | HTTPS/REST, JSON | Frontend to Traefik to owning service |
 | Gameplay, in solo and multiplayer | SignalR over WebSocket | Game client to Traefik to owning Hub |
 | Immediate internal answer | gRPC, Protobuf | Service to service, internal network |
-| Deferred business fact | Kafka, versioned Protobuf | Producer to independent consumer |
+| Deferred business fact | RabbitMQ, versioned Protobuf | Producer to independent consumer |
 
 ```mermaid
 flowchart TB
@@ -28,7 +28,7 @@ flowchart TB
   Combat[Combat\nturns, combat state, resolution]
   Rewards[Rewards\nloot, inventory, equipment, marketplace]
   Progression[Progression\nXP and leaderboard]
-  Kafka[(Kafka)]
+  RabbitMQ[(RabbitMQ)]
 
   Site -->|OIDC / HTTPS| Keycloak
   Client -->|OIDC / HTTPS| Keycloak
@@ -47,11 +47,11 @@ flowchart TB
   Combat -->|gRPC| Player
   Combat -->|gRPC| Rewards
   Combat -->|gRPC| Dungeon
-  Combat -->|produce| Kafka
-  Dungeon -->|produce| Kafka
-  Kafka -->|consume| Rewards
-  Kafka -->|consume| Progression
-  Kafka -->|consume| Player
+  Combat -->|publish| RabbitMQ
+  Dungeon -->|publish| RabbitMQ
+  RabbitMQ -->|deliver| Rewards
+  RabbitMQ -->|deliver| Progression
+  RabbitMQ -->|deliver| Player
 ```
 
 ### Gateway and identity rules
@@ -60,7 +60,7 @@ flowchart TB
   internal identity headers, and forwards normalized claims: `UserId`,
   `Username`, roles and `CorrelationId`.
 - Traefik proxies WebSocket upgrades and Hub traffic. It does not hold gameplay
-  state, consume Kafka events or become a BFF.
+  state, consume RabbitMQ messages or become a BFF.
 - A service authorizes each resource itself. A valid token never permits joining
   another player's session, dungeon or combat.
 - No service accesses another service's database or is exposed directly to the
@@ -154,21 +154,27 @@ Combat persists the Player and Rewards snapshots obtained at creation. Equipment
 changed later cannot alter that combat. The frontend blocks equip/unequip during
 combat; the MVP adds no backend inventory reservation.
 
-## 5. Kafka exchanges
+## 5. RabbitMQ asynchronous exchanges
 
-Kafka carries business facts that do not require an immediate response. Its
-at-least-once delivery requires idempotent consumers. Every payload is a
+RabbitMQ carries business facts that do not require an immediate response. Its
+redelivery behavior provides at-least-once processing and requires idempotent
+consumers. Every payload is a
 versioned Protobuf contract from the producer-owned contract package, wrapped in
 metadata containing `messageId`, `correlationId`, `causationId`, `messageType`,
 `version`, `occurredAt`, `producer` and typed payload.
 
-| Topic | Producer → consumer | Publish point | Consumer effect |
+Events are published to durable exchanges with versioned routing keys. Each
+consumer service owns a durable queue bound to the routing keys it consumes.
+Messages are acknowledged only after successful processing; retries and
+dead-letter routing handle failures without coupling producers to consumers.
+
+| Routing key | Producer → consumer queue | Publish point | Consumer effect |
 |---|---|---|---|
 | `combat.consumable-used.v1` | Combat → Rewards | A potion action already updated Combat local snapshot | Consume durable item once. Payload includes `CommandId`, hero ID, item ID and quantity. |
 | `combat.combat-completed.v1` | Combat → Progression | Winning combat has confirmed reward and accepted Dungeon result | Grant XP once and update Progression projections. XP is not real-time. |
 | `dungeon.dungeon-run-ended.v1` | Dungeon → Player | Run reaches `Won`, `Lost` or `Abandoned` | Close related `GameSession`, then emit `SessionStateChanged`. |
 
-The Gateway never consumes Kafka. A consumer changes only its own state and
+The Gateway never consumes RabbitMQ messages. A consumer changes only its own state and
 exposes any client-visible outcome through its own REST API or Hub.
 
 ## 6. Critical sequences
@@ -215,7 +221,7 @@ sequenceDiagram
   participant C as Combat
   participant P as Player
   participant R as Rewards
-  participant K as Kafka
+  participant M as RabbitMQ
   participant X as Progression
   D->>C: gRPC CreateCombat(room context)
   C->>P: gRPC GetCombatantSnapshot
@@ -226,8 +232,8 @@ sequenceDiagram
   R-->>C: Reward confirmed
   C->>D: gRPC ReportCombatResult(Won)
   D-->>C: Accepted transition
-  C->>K: Produce combat.combat-completed.v1
-  K->>X: Deliver CombatCompleted
+  C->>M: Publish combat.combat-completed.v1
+  M->>X: Deliver CombatCompleted
   X->>X: Grant XP once
 ```
 
@@ -241,17 +247,17 @@ no `CombatCompleted`.
 sequenceDiagram
   participant F as Game client
   participant C as CombatHub / Combat
-  participant K as Kafka
+  participant M as RabbitMQ
   participant R as Rewards
   participant D as Dungeon
   participant P as Player
   F->>C: ConsumePotion(CommandId, itemId)
   C->>C: Update local combat snapshot
   C-->>F: CombatStateChanged(snapshot)
-  C->>K: Produce combat.consumable-used.v1
-  K->>R: Consume item once
-  D->>K: Produce dungeon.dungeon-run-ended.v1
-  K->>P: Deliver DungeonRunEnded
+  C->>M: Publish combat.consumable-used.v1
+  M->>R: Deliver; consume item once
+  D->>M: Publish dungeon.dungeon-run-ended.v1
+  M->>P: Deliver DungeonRunEnded
   P->>P: Close GameSession
   P-->>P: PlayerHub SessionStateChanged
 ```
@@ -264,8 +270,8 @@ sequenceDiagram
 | Event duplicate | Deduplicate by `messageId` or business key; never consume twice, grant XP twice or reopen/close inconsistently. |
 | gRPC timeout | Treat outcome as unknown; retry only with same idempotency key. |
 | Mandatory reward | Chest and victory reward are synchronous gates; failure leaves operation pending/retryable, not falsely complete. |
-| Kafka delay | Eventual consistency is visible only through owner state; the Gateway never waits for a consumer. |
-| Tracing | Propagate `CorrelationId` through Gateway, Hub, gRPC and Kafka; use `CausationId` for derived events. |
+| RabbitMQ delay | Eventual consistency is visible only through owner state; the Gateway never waits for a consumer. |
+| Tracing | Propagate `CorrelationId` through Gateway, Hub, gRPC and RabbitMQ; use `CausationId` for derived events. |
 | Logs | Include `GameSessionId`, `DungeonId`, `CombatId`, hero ID, `CommandId`, reward cause and `messageId` where relevant. |
 
 ## 8. Not set up at initialization

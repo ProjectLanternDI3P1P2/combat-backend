@@ -3,12 +3,12 @@
 **Status:** Accepted
 
 ## Context
-gRPC and Kafka require contracts shared between producers and consumers.
+gRPC and RabbitMQ require contracts shared between producers and consumers.
 Manually duplicating `.proto` files risks divergence between repositories.
 A single global contracts repository would weaken service ownership.
 
 ## Decision
-Protocol Buffers SHALL be used for both gRPC and Kafka contracts.
+Protocol Buffers SHALL be used for both gRPC and RabbitMQ contracts.
 Each microservice SHALL own the contracts it exposes or publishes.
 
 Each service SHALL build a versioned NuGet contract package, for example `Reward.Contracts`.
@@ -16,7 +16,7 @@ The package MAY contain generated C# types from the owned `.proto` definitions.
 Consumers SHALL explicitly reference a released version of the producer contract package.
 
 There SHALL NOT be a single centralized repository containing all service contracts.
-There SHALL initially be no Kafka Schema Registry.
+There SHALL initially be no schema registry for asynchronous message contracts.
 Contracts SHALL remain independent from internal Domain, Application and Persistence models.
 A microservice SHALL NOT reference the Domain or Application project of another microservice.
 

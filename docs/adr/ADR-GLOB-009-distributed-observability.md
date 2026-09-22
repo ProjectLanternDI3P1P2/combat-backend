@@ -3,7 +3,7 @@
 **Status:** Accepted
 
 ## Context
-A user operation may cross the API Gateway, HTTP endpoints, SignalR/WebSocket connections, gRPC calls, Kafka producers and Kafka consumers.
+A user operation may cross the API Gateway, HTTP endpoints, SignalR/WebSocket connections, gRPC calls, RabbitMQ publishers and RabbitMQ consumers.
 Without shared observability context, diagnosing distributed latency and failures becomes difficult.
 
 ## Decision
@@ -15,7 +15,7 @@ Trace context SHALL be propagated across:
 - SignalR/WebSocket connection and command handling;
 - API Gateway forwarding;
 - gRPC calls;
-- Kafka message processing where supported.
+- RabbitMQ message processing where supported.
 
 Logs SHOULD include trace and correlation information.
 A correlation identifier SHALL be propagated across synchronous request boundaries.

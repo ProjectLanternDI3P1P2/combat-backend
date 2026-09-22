@@ -13,7 +13,7 @@ External clients SHALL NOT directly access individual microservices.
 Internal HTTP and gRPC interfaces SHALL only be reachable from the internal network.
 
 The Gateway SHALL handle external HTTP/HTTPS and SignalR/WebSocket routing, authentication and cross-cutting boundary policies.
-It SHALL proxy Hub connections to the owning microservice without consuming Kafka messages or owning gameplay state.
+It SHALL proxy Hub connections to the owning microservice without consuming RabbitMQ messages or owning gameplay state.
 The Gateway SHALL NOT contain business logic.
 No Backend For Frontend SHALL be introduced.
 
