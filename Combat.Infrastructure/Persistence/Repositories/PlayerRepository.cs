@@ -8,7 +8,6 @@ public sealed class PlayerRepository(CombatDbContext dbContext) : IPlayerReposit
     public async Task AddPlayerAsync(Player player, CancellationToken cancellationToken)
     {
         await dbContext.Players.AddAsync(player, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<Player?> GetPlayerByIdAsync(Guid playerId, CancellationToken cancellationToken)

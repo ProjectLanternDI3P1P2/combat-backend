@@ -30,6 +30,7 @@ public class PlayerRepositoryTests
 
         // Act
         await repository.AddPlayerAsync(player, TestContext.Current.CancellationToken);
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var storedPlayer = await dbContext.Players.FindAsync([player.Id], TestContext.Current.CancellationToken);

@@ -1,4 +1,4 @@
-using MediatR;
+using Combat.Application.Abstractions;
 
 namespace Combat.Application.Features.PlayerUseCase.CreatePlayer;
 
@@ -7,4 +7,4 @@ public record CreatePlayerCommand(
     string Name,
     int Attack,
     int Health,
-    int MaxHealth) : IRequest;
+    int MaxHealth) : ICommand;
