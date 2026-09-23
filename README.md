@@ -154,15 +154,16 @@ application interface.
 ## Branching flow
 
 ```text
-feature/xxx --squash--> dev --merge commit--> main --> tag + CHANGELOG
+feature/xxx --merge commit--> dev --merge commit--> main --> tag + CHANGELOG
                          ^                      |
                          +----- back-merge -----+
 ```
 
-- `dev` is the default branch. Open every feature pull request against it, and
-  **squash** on merge: one feature becomes one conventional commit.
-- Promote by opening a pull request from `dev` to `main` and merging it with a
-  **merge commit**. Never squash this one — release-please reads the individual
+- `dev` is the default branch. Open every feature pull request against it and
+  merge it with a **merge commit**: every commit keeps its author and its own
+  line in the history.
+- Promote by opening a pull request from `dev` to `main`, also merged with a
+  **merge commit**. Never squash or rebase — release-please reads the individual
   commits ([ADR-0002](./docs/adr/0002-merge-strategy-depends-on-the-target-branch.md)).
 - release-please then maintains independent release pull requests on `main` for
   the application and the Protocol Buffer contracts. Merging one writes its
@@ -174,21 +175,25 @@ feature/xxx --squash--> dev --merge commit--> main --> tag + CHANGELOG
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org):
 `feat:` and `fix:` appear in the changelog and move the version, everything else
 (`chore:`, `ci:`, `refactor:`, `test:`, `docs:`, `build:`, `style:`) is hidden and
-moves nothing.
+moves nothing. Since every commit reaches `main`, every commit message is checked:
+by a `commit-msg` hook locally and by the `Commitlint` job in CI. The full rules
+are in [docs/GIT_RULES.md](./docs/GIT_RULES.md).
 
 ## Continuous integration
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yaml` | PR to `dev` / `main`, push to `main` | Calls the reusable lint, test and build workflows |
+| `commitlint.yaml` | PR to `dev` / `main` | Checks every commit message of the pull request |
 | `sonar.yaml` | PR and push to `dev`, except Dependabot | Builds and tests under the SonarScanner for .NET, uploads coverage |
 | `security.yml` | PR to `dev` / `main`, push to `main` | Trivy filesystem scan, zizmor workflow audit |
 | `release-please.yaml` | push to `main` | Maintains the release pull request |
 | `back-merge.yaml` | after a release | Opens and merges `main` → `dev` |
 
 Formatting is enforced by `dotnet format --verify-no-changes --severity warn`,
-which reads `.editorconfig`. The same command runs locally as a pre-commit hook
-through Husky.Net, installed by `dotnet tool restore`.
+which reads `.editorconfig`. A lighter pass runs locally as a pre-commit hook
+through Husky.Net, alongside a `commit-msg` hook checking the Conventional Commits
+format. Run `dotnet tool restore` then `dotnet husky install` once per clone.
 
 ## Adding integration tests
 
@@ -218,15 +223,14 @@ from lint and unit tests.
    the release pull request would never get a CI run.
 4. Set `dev` as the default branch and protect both `dev` and `main`. Required
    checks: `Lint / dotnet format`, `Test / dotnet test`, `Build / dotnet build`,
-   `Trivy Security Scan`, `GitHub Actions audit`. **Not** `SonarQube Cloud scan`:
+   `Trivy Security Scan`, `GitHub Actions audit`, `Commitlint`. **Not** `SonarQube Cloud scan`:
    it is skipped on Dependabot pull requests, and a required check that never
    runs blocks them forever. Keep "require linear history" **off**, or the merge
    commits this flow depends on become impossible.
-5. Add two rulesets so the merge strategy is enforced rather than merely written
-   down (ADR-0007): one on `dev` allowing **squash** only, one on `main` allowing
-   **merge commits** only. Give organisation admins a bypass on the `dev` one —
-   the back-merge workflow merges `main` into `dev` with a merge commit and would
-   otherwise be refused.
+5. Add one ruleset on `dev` and `main` allowing **merge commits** only, so the
+   merge strategy is enforced rather than merely written down (ADR-0007). No
+   bypass is needed. Disable squash and rebase merging in the repository
+   settings too.
 6. Enable auto-merge on the repository; the back-merge workflow uses it.
 7. Rename the `Combat.*` projects to your service name, and update `/k:` and
    `/o:` in `.github/workflows/sonar.yaml`.
