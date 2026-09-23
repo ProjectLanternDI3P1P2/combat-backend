@@ -1,0 +1,32 @@
+name: Commitlint
+
+# Every pull request is merged with a merge commit (ADR-0002), so every commit on a
+# branch reaches main and release-please reads each one. This checks all of them,
+# not only the pull request title. The local commit-msg hook applies the same rules,
+# but it can be skipped; this job cannot.
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: Commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # The action walks the pull request's commits, so it needs the history.
+          fetch-depth: 0
+
+      # Rules live in .commitlintrc.json: config-conventional, whose types are
+      # exactly the changelog sections of release-please-config.json.
+      - name: Check commit messages
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
+        with:
+          configFile: .commitlintrc.json

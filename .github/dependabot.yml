@@ -5,6 +5,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Every commit reaches main (ADR-0002) and Commitlint checks it, so Dependabot's
+    # default "Bump x from a to b" would be refused. build(deps): stays out of the
+    # changelog and moves no version.
+    commit-message:
+      prefix: build
+      include: scope
     groups:
       # One reviewable pull request instead of a dozen. Majors keep their own, because
       # those are the ones worth reading a changelog for.
@@ -20,3 +26,6 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    commit-message:
+      prefix: ci
+      include: scope
