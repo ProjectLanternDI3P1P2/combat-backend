@@ -1,0 +1,24 @@
+#!/bin/sh
+# Conventional Commits check, in plain sh so the backend needs no Node toolchain.
+# The same rules run in CI (.github/workflows/commitlint.yaml, .commitlintrc.json),
+# which is the check that actually counts: this hook can be skipped with --no-verify.
+
+header=$(head -n 1 "$1")
+
+# Messages written by git itself are not checked, like commitlint's defaults.
+case "$header" in
+  "Merge "* | "Revert \""* | "fixup! "* | "squash! "* | "amend! "*) exit 0 ;;
+esac
+
+types='feat|fix|perf|refactor|revert|docs|test|chore|ci|build|style'
+if ! printf '%s\n' "$header" | grep -Eq "^($types)(\([^)]+\))?!?: .+"; then
+  echo "commit-msg: \"$header\" is not a Conventional Commit." >&2
+  echo "Expected: <type>(<optional scope>): <subject>, type one of: $types" >&2
+  echo "See docs/GIT_RULES.md." >&2
+  exit 1
+fi
+
+if [ "${#header}" -gt 100 ]; then
+  echo "commit-msg: header is ${#header} characters long, the limit is 100." >&2
+  exit 1
+fi
