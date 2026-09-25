@@ -21,8 +21,6 @@ Combat.Test/            xUnit tests for all of the above
 `Presentation` is the Clean Architecture layer name for the HTTP API. There is no
 user interface.
 
-The development-only monster type mock is documented in [docs/MONSTER_TYPES_MOCKS.fr.md](./docs/MONSTER_TYPES_MOCKS.fr.md).
-
 ## Commands
 
 ```powershell
