@@ -1,3 +1,4 @@
+using Combat.Application.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using ILogger = Serilog.ILogger;
@@ -22,6 +23,16 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
             logger.Warning(exception, "Validation error occurred");
             await HandleValidationExceptionAsync(context, exception);
         }
+        catch (ExternalServiceUnavailableException exception)
+        {
+            logger.Error(exception, "External service unavailable");
+            await HandleProblemAsync(context, StatusCodes.Status503ServiceUnavailable, "Service unavailable", exception.Message);
+        }
+        catch (InvalidHeroCombatDataException exception)
+        {
+            logger.Error(exception, "Invalid hero combat data received");
+            await HandleProblemAsync(context, StatusCodes.Status502BadGateway, "Invalid upstream data", exception.Message);
+        }
         catch (Exception exception)
         {
             logger.Error(exception, "Unhandled exception occurred");
@@ -41,6 +52,22 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
         };
 
         context.Response.StatusCode = StatusCodes.Status404NotFound;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(problemDetails, context.RequestAborted);
+    }
+
+    private static async Task HandleProblemAsync(HttpContext context, int statusCode, string title, string detail)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Type = $"https://httpstatuses.com/{statusCode}",
+            Title = title,
+            Detail = detail,
+            Status = statusCode,
+            Instance = context.Request.Path
+        };
+
+        context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(problemDetails, context.RequestAborted);
     }
