@@ -14,12 +14,12 @@ public sealed class MonsterController(IMediator mediator, ILogger logger) : Cont
     public async Task<IActionResult> Generate([FromBody] MonsterDto monsterDto, CancellationToken cancellationToken)
     {
         logger.Information(
-            "Received request to generate monster of type {MonsterType} for combat {CombatId}.",
-            monsterDto.MonsterType,
+            "Received request to generate monster of type {MonsterTypeId} for combat {CombatId}.",
+            monsterDto.MonsterTypeId,
             monsterDto.CombatId);
 
         GenerateMonsterResult result = await mediator.Send(
-            new GenerateMonsterCommand(monsterDto.CombatId, monsterDto.MonsterType),
+            new GenerateMonsterCommand(monsterDto.CombatId, monsterDto.MonsterTypeId),
             cancellationToken);
 
         logger.Information("Monster {MonsterId} generated successfully for combat {CombatId}.", result.MonsterId, result.CombatId);

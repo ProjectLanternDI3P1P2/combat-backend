@@ -8,24 +8,22 @@ using MediatR;
 namespace Combat.Application.Features.MonsterUseCase.GenerateMonster;
 
 public sealed class GenerateMonsterCommandHandler(
-    IMonsterTypeProvider monsterTypeProvider,
+    IMonsterTypeCatalog monsterTypeCatalog,
     IMonsterRepository monsterRepository) : IRequestHandler<GenerateMonsterCommand, GenerateMonsterResult>
 {
     public async Task<GenerateMonsterResult> Handle(GenerateMonsterCommand request, CancellationToken cancellationToken)
     {
-        MonsterTypeSummary? monsterType = await monsterTypeProvider.GetMonsterTypeAsync(request.MonsterType, cancellationToken);
-
-        if (monsterType is null)
-        {
-            throw new KeyNotFoundException($"Monster type not found with MonsterType '{request.MonsterType}'.");
-        }
+        IReadOnlyList<MonsterTypeDefinition> resolved = await monsterTypeCatalog.ResolveRequiredAsync(
+            [request.MonsterTypeId],
+            cancellationToken);
+        MonsterTypeDefinition monsterType = resolved[0];
 
         Monster monster = new()
         {
             MonsterId = Guid.NewGuid(),
             CombatId = request.CombatId,
             IsBoss = monsterType.IsBoss,
-            BaseHp = monsterType.BaseHp,
+            BaseHp = monsterType.BaseHealth,
             BaseAttack = monsterType.BaseAttack,
             BaseDefense = monsterType.BaseDefense,
             BaseSpeed = monsterType.BaseSpeed,

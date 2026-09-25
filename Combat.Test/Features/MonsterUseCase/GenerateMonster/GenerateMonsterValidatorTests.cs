@@ -7,7 +7,7 @@ public class GenerateMonsterValidatorTests
 {
     private readonly GenerateMonsterValidator _validator = new();
 
-    private static GenerateMonsterCommand ValidCommand() => new(Guid.NewGuid(), "goblin");
+    private static GenerateMonsterCommand ValidCommand() => new(Guid.NewGuid(), Guid.NewGuid());
 
     [Fact]
     public void Validate_ValidCommand_HasNoValidationErrors()
@@ -36,28 +36,15 @@ public class GenerateMonsterValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyMonsterType_HasValidationErrorForMonsterType()
+    public void Validate_EmptyMonsterTypeId_HasValidationErrorForMonsterTypeId()
     {
         // Arrange
-        var command = ValidCommand() with { MonsterType = string.Empty };
+        var command = ValidCommand() with { MonsterTypeId = Guid.Empty };
 
         // Act
         var result = _validator.TestValidate(command);
 
         // Assert
-        result.ShouldHaveValidationErrorFor(request => request.MonsterType);
-    }
-
-    [Fact]
-    public void Validate_MonsterTypeExceedsMaximumLength_HasValidationErrorForMonsterType()
-    {
-        // Arrange
-        var command = ValidCommand() with { MonsterType = new string('a', 51) };
-
-        // Act
-        var result = _validator.TestValidate(command);
-
-        // Assert
-        result.ShouldHaveValidationErrorFor(request => request.MonsterType);
+        result.ShouldHaveValidationErrorFor(request => request.MonsterTypeId);
     }
 }

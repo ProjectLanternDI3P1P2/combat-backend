@@ -11,13 +11,13 @@ namespace Combat.Test.Features.MonsterUseCase.GenerateMonster;
 
 public class GenerateMonsterCommandHandlerTests
 {
-    private readonly Mock<IMonsterTypeProvider> _monsterTypeProviderMock = new();
+    private readonly Mock<IMonsterTypeCatalog> _monsterTypeCatalogMock = new();
     private readonly Mock<IMonsterRepository> _monsterRepositoryMock = new();
     private readonly GenerateMonsterCommandHandler _handler;
 
     public GenerateMonsterCommandHandlerTests()
     {
-        _handler = new GenerateMonsterCommandHandler(_monsterTypeProviderMock.Object, _monsterRepositoryMock.Object);
+        _handler = new GenerateMonsterCommandHandler(_monsterTypeCatalogMock.Object, _monsterRepositoryMock.Object);
     }
 
     [Fact]
@@ -25,21 +25,16 @@ public class GenerateMonsterCommandHandlerTests
     {
         // Arrange
         var combatId = Guid.NewGuid();
-        var command = new GenerateMonsterCommand(combatId, "dragon");
-        var monsterType = new MonsterTypeSummary
-        {
-            MonsterType = "dragon",
-            IsBoss = true,
-            BaseHp = 300,
-            BaseAttack = 40,
-            BaseDefense = 25,
-            BaseSpeed = 15
-        };
+        var monsterTypeId = Guid.NewGuid();
+        var command = new GenerateMonsterCommand(combatId, monsterTypeId);
+        var monsterType = new MonsterTypeDefinition(monsterTypeId, "Dragon", true, 300, 40, 25, 15);
         Monster? capturedMonster = null;
 
-        _monsterTypeProviderMock
-            .Setup(provider => provider.GetMonsterTypeAsync("dragon", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(monsterType);
+        _monsterTypeCatalogMock
+            .Setup(catalog => catalog.ResolveRequiredAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == monsterTypeId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([monsterType]);
         _monsterRepositoryMock
             .Setup(repository => repository.AddMonsterAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()))
             .Callback<Monster, CancellationToken>((monster, _) => capturedMonster = monster)
@@ -53,7 +48,7 @@ public class GenerateMonsterCommandHandlerTests
         capturedMonster!.MonsterId.Should().NotBeEmpty();
         capturedMonster.CombatId.Should().Be(combatId);
         capturedMonster.IsBoss.Should().BeTrue();
-        capturedMonster.BaseHp.Should().Be(monsterType.BaseHp);
+        capturedMonster.BaseHp.Should().Be(monsterType.BaseHealth);
         capturedMonster.BaseAttack.Should().Be(monsterType.BaseAttack);
         capturedMonster.BaseDefense.Should().Be(monsterType.BaseDefense);
         capturedMonster.BaseSpeed.Should().Be(monsterType.BaseSpeed);
@@ -69,18 +64,21 @@ public class GenerateMonsterCommandHandlerTests
     public async Task Handle_UnknownType_ThrowsKeyNotFoundException()
     {
         // Arrange
-        var command = new GenerateMonsterCommand(Guid.NewGuid(), "unknown-type");
+        var monsterTypeId = Guid.NewGuid();
+        var command = new GenerateMonsterCommand(Guid.NewGuid(), monsterTypeId);
 
-        _monsterTypeProviderMock
-            .Setup(provider => provider.GetMonsterTypeAsync("unknown-type", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((MonsterTypeSummary?)null);
+        _monsterTypeCatalogMock
+            .Setup(catalog => catalog.ResolveRequiredAsync(
+                It.IsAny<IReadOnlyCollection<Guid>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException($"Unknown monster type IDs: {monsterTypeId}."));
 
         // Act
         Func<Task> act = async () => await _handler.Handle(command, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage("*unknown-type*");
+            .WithMessage($"*{monsterTypeId}*");
         _monsterRepositoryMock.Verify(
             repository => repository.AddMonsterAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()),
             Times.Never);
