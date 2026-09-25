@@ -2,6 +2,7 @@ using Combat.Application.Ports;
 using Combat.Domain.Services;
 using Combat.Infrastructure.ExternalServices;
 using Combat.Infrastructure.Grpc;
+using Combat.Infrastructure.HeroMocks;
 using Combat.Infrastructure.Messaging;
 using Combat.Infrastructure.MonsterMocks;
 using Combat.Infrastructure.Persistence;
@@ -21,7 +22,8 @@ public static class InfrastructureServiceRegistration
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services,
         IConfiguration configuration,
-        bool enableMonsterTypeMocks = false)
+        bool enableMonsterTypeMocks = false,
+        bool enableHeroMocks = false)
     {
         DatabaseOptions databaseOptions = configuration
             .GetSection(DatabaseOptions.SectionName)
@@ -36,6 +38,10 @@ public static class InfrastructureServiceRegistration
             .AddGrpcConfiguration(configuration)
             .AddExternalServices(configuration)
             .AddMessaging(configuration);
+
+        services.AddSingleton<IHeroCombatStateSource>(enableHeroMocks
+            ? new MockHeroCombatStateSource()
+            : new UnavailableHeroCombatStateSource());
 
         if (enableMonsterTypeMocks)
         {
