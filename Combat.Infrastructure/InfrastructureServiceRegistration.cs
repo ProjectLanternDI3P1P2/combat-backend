@@ -1,8 +1,9 @@
 using Combat.Application.Ports;
 using Combat.Domain.Services;
+using Combat.Infrastructure.ExternalServices;
 using Combat.Infrastructure.Grpc;
 using Combat.Infrastructure.Messaging;
-using Combat.Infrastructure.Monsters;
+using Combat.Infrastructure.MonsterMocks;
 using Combat.Infrastructure.Persistence;
 using Combat.Infrastructure.PipelineBehavior;
 using Combat.Infrastructure.Services;
@@ -17,21 +18,35 @@ namespace Combat.Infrastructure;
 
 public static class InfrastructureServiceRegistration
 {
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool enableMonsterTypeMocks = false)
     {
         DatabaseOptions databaseOptions = configuration
             .GetSection(DatabaseOptions.SectionName)
             .Get<DatabaseOptions>() ?? new DatabaseOptions();
 
-        return services
+        services
             .AddSingleton(Options.Create(databaseOptions))
             .AddSingleton<IClock, SystemClock>()
-            .AddSingleton<IMonsterTypeProvider, MockedMonsterTypeProvider>()
             .AddTransient(typeof(IPipelineBehavior<,>), typeof(CommandTransactionBehavior<,>))
             .AddEfConnection()
             .AddRepositories()
             .AddGrpcConfiguration(configuration)
+            .AddExternalServices(configuration)
             .AddMessaging(configuration);
+
+        if (enableMonsterTypeMocks)
+        {
+            services.AddSingleton<IMonsterTypeSource, MockMonsterTypeSource>();
+        }
+        else
+        {
+            services.AddSingleton<IMonsterTypeSource, UnavailableMonsterTypeSource>();
+        }
+
+        return services;
     }
 
     private static IServiceCollection AddRepositories(this IServiceCollection services)
