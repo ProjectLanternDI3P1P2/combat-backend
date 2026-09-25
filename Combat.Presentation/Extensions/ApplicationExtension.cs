@@ -1,3 +1,4 @@
+using Combat.Presentation.Hubs;
 using Combat.Presentation.Middleware;
 using Scalar.AspNetCore;
 
@@ -5,7 +6,7 @@ namespace Combat.Presentation.Extensions;
 
 public static class ApplicationExtension
 {
-    public static WebApplication ConfigureStart(this WebApplication app)
+    public static WebApplication ConfigureStart(this WebApplication app, bool enableHeroMocks = false)
     {
         app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -18,6 +19,11 @@ public static class ApplicationExtension
         app.MapGrpcServices();
         app.MapHealthChecks("/health/live");
         app.MapHealthChecks("/health/ready");
+
+        if (enableHeroMocks)
+        {
+            app.MapHub<CombatHub>("/hubs/combats");
+        }
 
         if (app.Environment.IsDevelopment())
         {
