@@ -1,4 +1,5 @@
 using Combat.Application.Exceptions;
+using Combat.Domain.Exceptions;
 using FluentValidation;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -31,6 +32,11 @@ public sealed class GrpcExceptionInterceptor(ILogger logger, IHostEnvironment en
         {
             logger.Warning(exception, "gRPC validation error.");
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Validation error."));
+        }
+        catch (InvalidFighterOperationException exception)
+        {
+            logger.Warning(exception, "gRPC fighter operation rejected.");
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message));
         }
         catch (ExternalServiceUnavailableException exception)
         {

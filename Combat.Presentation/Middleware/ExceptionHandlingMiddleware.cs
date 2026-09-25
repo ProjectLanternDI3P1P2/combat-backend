@@ -1,4 +1,5 @@
 using Combat.Application.Exceptions;
+using Combat.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using ILogger = Serilog.ILogger;
@@ -22,6 +23,11 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
         {
             logger.Warning(exception, "Validation error occurred");
             await HandleValidationExceptionAsync(context, exception);
+        }
+        catch (InvalidFighterOperationException exception)
+        {
+            logger.Warning(exception, "Fighter operation rejected");
+            await HandleProblemAsync(context, StatusCodes.Status409Conflict, "Invalid fighter state", exception.Message);
         }
         catch (ExternalServiceUnavailableException exception)
         {
