@@ -1,6 +1,8 @@
+using Combat.Application.Ports;
 using Combat.Domain.Services;
 using Combat.Infrastructure.Grpc;
 using Combat.Infrastructure.Messaging;
+using Combat.Infrastructure.Monsters;
 using Combat.Infrastructure.Persistence;
 using Combat.Infrastructure.PipelineBehavior;
 using Combat.Infrastructure.Services;
@@ -24,6 +26,7 @@ public static class InfrastructureServiceRegistration
         return services
             .AddSingleton(Options.Create(databaseOptions))
             .AddSingleton<IClock, SystemClock>()
+            .AddSingleton<IMonsterTypeProvider, MockedMonsterTypeProvider>()
             .AddTransient(typeof(IPipelineBehavior<,>), typeof(CommandTransactionBehavior<,>))
             .AddEfConnection()
             .AddRepositories()
