@@ -1,4 +1,5 @@
 using Combat.Domain.Services;
+using Combat.Infrastructure.ExternalServices;
 using Combat.Infrastructure.Grpc;
 using Combat.Infrastructure.Messaging;
 using Combat.Infrastructure.Persistence;
@@ -28,6 +29,7 @@ public static class InfrastructureServiceRegistration
             .AddEfConnection()
             .AddRepositories()
             .AddGrpcConfiguration(configuration)
+            .AddExternalServices(configuration)
             .AddMessaging(configuration);
     }
 

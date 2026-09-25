@@ -1,4 +1,5 @@
 using Combat.Application.PipelineBehavior;
+using Combat.Application.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -10,7 +11,8 @@ public static class ApplicationServiceRegistration
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         return services.ConfigureMediatR()
-            .ConfigureFluentValidation();
+            .ConfigureFluentValidation()
+            .AddScoped<IHeroCombatDataProvider, HeroCombatDataProvider>();
     }
 
     private static IServiceCollection ConfigureMediatR(this IServiceCollection services)
