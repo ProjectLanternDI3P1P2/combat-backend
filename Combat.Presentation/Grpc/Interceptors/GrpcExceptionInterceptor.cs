@@ -1,3 +1,4 @@
+using Combat.Application.Exceptions;
 using FluentValidation;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -30,6 +31,16 @@ public sealed class GrpcExceptionInterceptor(ILogger logger, IHostEnvironment en
         {
             logger.Warning(exception, "gRPC validation error.");
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Validation error."));
+        }
+        catch (ExternalServiceUnavailableException exception)
+        {
+            logger.Error(exception, "gRPC dependency unavailable.");
+            throw new RpcException(new Status(StatusCode.Unavailable, exception.Message));
+        }
+        catch (InvalidHeroCombatDataException exception)
+        {
+            logger.Error(exception, "gRPC invalid hero combat data.");
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message));
         }
         catch (Exception exception)
         {

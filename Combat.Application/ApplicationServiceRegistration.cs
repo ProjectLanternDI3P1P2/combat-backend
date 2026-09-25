@@ -1,4 +1,7 @@
+using Combat.Application.Features.MonsterTypes;
 using Combat.Application.PipelineBehavior;
+using Combat.Application.Ports;
+using Combat.Application.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -9,8 +12,11 @@ public static class ApplicationServiceRegistration
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        return services.ConfigureMediatR()
-            .ConfigureFluentValidation();
+        return services
+            .AddScoped<IMonsterTypeCatalog, MonsterTypeCatalog>()
+            .ConfigureMediatR()
+            .ConfigureFluentValidation()
+            .AddScoped<IHeroCombatDataProvider, HeroCombatDataProvider>();
     }
 
     private static IServiceCollection ConfigureMediatR(this IServiceCollection services)
