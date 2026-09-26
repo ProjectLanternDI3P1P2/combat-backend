@@ -190,10 +190,10 @@ are in [docs/GIT_RULES.md](./docs/GIT_RULES.md).
 | `release-please.yaml` | push to `main` | Maintains the release pull request |
 | `back-merge.yaml` | after a release | Opens and merges `main` → `dev` |
 
-Formatting is enforced by `dotnet format --verify-no-changes --severity warn`,
-which reads `.editorconfig`. A lighter pass runs locally as a pre-commit hook
-through Husky.Net, alongside a `commit-msg` hook checking the Conventional Commits
-format. Run `dotnet tool restore` then `dotnet husky install` once per clone.
+Formatting is enforced by `dotnet csharpier check .`. CSharpier runs locally on
+staged C# files through Husky.Net, alongside a `commit-msg` hook checking the
+Conventional Commits format. Run `dotnet tool restore` then `dotnet husky install`
+once per clone.
 
 ## Adding integration tests
 
@@ -222,7 +222,7 @@ from lint and unit tests.
    `GITHUB_TOKEN`: a pull request opened by the latter triggers no workflow, so
    the release pull request would never get a CI run.
 4. Set `dev` as the default branch and protect both `dev` and `main`. Required
-   checks: `Lint / dotnet format`, `Test / dotnet test`, `Build / dotnet build`,
+   checks: `Lint / CSharpier`, `Test / dotnet test`, `Build / dotnet build`,
    `Trivy Security Scan`, `GitHub Actions audit`, `Commitlint`. **Not** `SonarQube Cloud scan`:
    it is skipped on Dependabot pull requests, and a required check that never
    runs blocks them forever. Keep "require linear history" **off**, or the merge

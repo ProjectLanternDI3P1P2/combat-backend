@@ -11,7 +11,8 @@ public sealed class CommandTransactionBehavior<TRequest, TResponse>(CombatDbCont
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ArgumentNullException.ThrowIfNull(next);
 
