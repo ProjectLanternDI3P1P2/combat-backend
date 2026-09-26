@@ -85,17 +85,15 @@ curl http://localhost:8080/health/ready
 docker compose down -v   # -v also drops the database volume
 ```
 
-Apply the EF Core migrations before calling endpoints that persist data:
-
-```powershell
-dotnet tool restore
-dotnet tool run dotnet-ef database update --project Combat.Infrastructure --startup-project Combat.Infrastructure
-```
+In Development, the application applies the service migrations and seeds example
+players on startup. This template intentionally contains no EF Core migration:
+create the initial migration after creating a service from it.
 
 ## Toolchain
 
 The SDK version is pinned in `global.json`; `dotnet tool restore` installs the
-coverage collector, EF Core Tools, and the git-hook runner declared in `dotnet-tools.json`.
+coverage collector, EF Core Tools, CSharpier, and the git-hook runner declared in
+`.config/dotnet-tools.json`.
 Run `dotnet husky install` once per clone to enable the pre-commit hook — git
 hook paths are local configuration and cannot be committed.
 
@@ -117,21 +115,18 @@ secret instead of storing it in the configuration file.
 
 ## Database migrations
 
-`Combat.Infrastructure` owns both the migrations and the design-time
-`CombatDbContextFactory`; it is used as both the target and startup project for
-EF Core Tools. This keeps `Combat.Presentation` free of the EF Core Design
-dependency. The factory loads the Presentation configuration from the repository
-root and lets `ConnectionStrings__DefaultConnection` override it.
+The template keeps the Reward workflow but deliberately ships no migration files.
+After creating and naming a service, generate its initial migration before running
+the application or integration tests:
 
 ```powershell
 dotnet tool restore
-dotnet tool run dotnet-ef migrations add <MigrationName> --project Combat.Infrastructure --startup-project Combat.Infrastructure
-dotnet tool run dotnet-ef database update --project Combat.Infrastructure --startup-project Combat.Infrastructure
+dotnet tool run dotnet-ef migrations add InitialCreate --project <Service>.Infrastructure --startup-project <Service>.Infrastructure
 ```
 
-If you created the `Players` table manually while testing, start with a fresh
-local volume (`docker compose down -v`, then `docker compose up -d`) before the
-first `database update`; the initial migration must create that table itself.
+`<Service>.Infrastructure` owns migrations and the design-time DbContext factory.
+Development startup applies them before seeding. Production-like deployments must
+run migrations as a controlled rollout step, never by every application instance.
 
 For host-based development, `appsettings.Development.json` targets the Compose
 PostgreSQL port `5433`. The Compose API uses its own `postgres:5432` connection.
@@ -195,17 +190,20 @@ staged C# files through Husky.Net, alongside a `commit-msg` hook checking the
 Conventional Commits format. Run `dotnet tool restore` then `dotnet husky install`
 once per clone.
 
-## Adding integration tests
+## Integration tests
 
-There are none yet, and `Combat.Test` holds unit tests only —
-`PlayerRepositoryTests` uses the EF Core in-memory provider, which is not a real
-database. Real integration tests would need a `WebApplicationFactory` for the
-HTTP surface and a containerised PostgreSQL for persistence.
+`Combat.Test/Integration` contains runnable examples for both a REST controller
+and a gRPC service. They use `WebApplicationFactory`, PostgreSQL and Respawn.
+Start the database with `docker compose up -d postgres`, then run:
 
-Both are cross-cutting choices affecting all five services, so pick them as a
-shared decision and record an ADR before adding them here. Once they exist, give
-them their own job in `ci.yaml` so a slow suite does not gate the fast feedback
-from lint and unit tests.
+```powershell
+dotnet test --solution Combat.Presentation.slnx --filter "FullyQualifiedName~Integration"
+```
+
+Each fixture creates and drops a unique database, then applies the service
+migrations. Set
+`COMBAT_TEST_DATABASE_CONNECTION` to use another administrative PostgreSQL
+connection; it is never reset itself.
 
 ## Setting up a new repository from this template
 
