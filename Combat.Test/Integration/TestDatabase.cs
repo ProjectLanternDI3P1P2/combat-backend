@@ -48,7 +48,7 @@ public sealed class TestDatabase : IAsyncDisposable
             .UseNpgsql(connectionString)
             .Options;
         await using (var context = new CombatDbContext(options))
-            await context.Database.EnsureCreatedAsync();
+            await context.Database.MigrateAsync();
         await using var testConnection = new NpgsqlConnection(connectionString);
         await testConnection.OpenAsync();
         return new TestDatabase(

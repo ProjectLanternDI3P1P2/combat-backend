@@ -13,7 +13,7 @@ public static class DatabaseSeedingExtensions
         await using AsyncServiceScope scope = services.CreateAsyncScope();
         CombatDbContext context = scope.ServiceProvider.GetRequiredService<CombatDbContext>();
 
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
         await DataSeeder.SeedAsync(context, cancellationToken);
     }
 }

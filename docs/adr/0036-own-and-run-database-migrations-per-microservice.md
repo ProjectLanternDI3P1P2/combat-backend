@@ -1,15 +1,17 @@
-# Keep database migrations out of the shared template
+# Own and run database migrations per microservice
 
-The shared template contains no Entity Framework Core migrations. It uses
-`EnsureCreated` only for its Development seed and test databases.
+Each microservice owns and versions its Entity Framework Core migrations. The
+shared template contains no migration files because its generated service must
+create an initial migration for its own domain model.
 
-Each service chooses its own production schema-evolution strategy when its
-domain model and deployment constraints are known.
+Development startup and integration-test fixtures apply migrations. Deployed
+environments use a dedicated migration execution mechanism or service.
 
 ## Considered Options
 
 Shipping an initial migration in a template makes a generated service inherit a
-schema history that is unrelated to its actual domain.
+schema history that is unrelated to its actual domain. Skipping migrations after
+the service is created would make schema evolution unsafe and non-repeatable.
 
 Sharing migrations between services would contradict database ownership and
 couple independently evolving schemas.
@@ -19,6 +21,6 @@ from serving application traffic.
 
 ## Consequences
 
-Services that adopt migrations must own, version and execute them independently.
-`EnsureCreated` is not a production migration strategy and must be replaced
-before a persistent production database is introduced.
+Migration files live with the persistence code of the microservice that owns the
+database. Production-like deployments must execute them before or as a controlled
+part of rollout.

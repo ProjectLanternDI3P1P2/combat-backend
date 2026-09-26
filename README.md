@@ -85,8 +85,9 @@ curl http://localhost:8080/health/ready
 docker compose down -v   # -v also drops the database volume
 ```
 
-In Development, the application creates its local schema and seeds example players
-on startup. This template intentionally contains no EF Core migrations.
+In Development, the application applies the service migrations and seeds example
+players on startup. This template intentionally contains no EF Core migration:
+create the initial migration after creating a service from it.
 
 ## Toolchain
 
@@ -112,11 +113,20 @@ PostgreSQL is configured through the `ConnectionStrings` section.
 `PasswordFile` is optional. It injects the password from a Docker or Kubernetes
 secret instead of storing it in the configuration file.
 
-## Database schema
+## Database migrations
 
-The template uses `EnsureCreated` only in Development to keep its sample runnable
-without prescribing a migration workflow. A service created from this template
-must choose and document its production schema-evolution strategy before launch.
+The template keeps the Reward workflow but deliberately ships no migration files.
+After creating and naming a service, generate its initial migration before running
+the application or integration tests:
+
+```powershell
+dotnet tool restore
+dotnet tool run dotnet-ef migrations add InitialCreate --project <Service>.Infrastructure --startup-project <Service>.Infrastructure
+```
+
+`<Service>.Infrastructure` owns migrations and the design-time DbContext factory.
+Development startup applies them before seeding. Production-like deployments must
+run migrations as a controlled rollout step, never by every application instance.
 
 For host-based development, `appsettings.Development.json` targets the Compose
 PostgreSQL port `5433`. The Compose API uses its own `postgres:5432` connection.
@@ -190,7 +200,8 @@ Start the database with `docker compose up -d postgres`, then run:
 dotnet test --solution Combat.Presentation.slnx --filter "FullyQualifiedName~Integration"
 ```
 
-Each fixture creates and drops a unique database. Set
+Each fixture creates and drops a unique database, then applies the service
+migrations. Set
 `COMBAT_TEST_DATABASE_CONNECTION` to use another administrative PostgreSQL
 connection; it is never reset itself.
 
