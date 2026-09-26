@@ -66,7 +66,8 @@ state, conflict and duplicate processing.
 # Database lifecycle
 
 Integration tests run against a dedicated test database.
-The schema must correspond to the service migrations.
+The schema is created by the test fixture from the EF Core model. A service that
+later adopts migrations should apply them here instead.
 Respawn resets application data between tests while keeping the schema available.
 Tests must not depend on execution order.
 
