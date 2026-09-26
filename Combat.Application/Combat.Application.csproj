@@ -17,4 +17,11 @@
     <ProjectReference Include="..\Combat.Contracts\Combat.Contracts.csproj" />
     <ProjectReference Include="..\Combat.Domain\Combat.Domain.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\.dockerignore">
+      <Link>.dockerignore</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>
