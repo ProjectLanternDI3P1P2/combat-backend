@@ -1,7 +1,7 @@
+using System.Reflection;
 using Combat.Application.PipelineBehavior;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Combat.Application;
 
@@ -9,8 +9,7 @@ public static class ApplicationServiceRegistration
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        return services.ConfigureMediatR()
-            .ConfigureFluentValidation();
+        return services.ConfigureMediatR().ConfigureFluentValidation();
     }
 
     private static IServiceCollection ConfigureMediatR(this IServiceCollection services)
