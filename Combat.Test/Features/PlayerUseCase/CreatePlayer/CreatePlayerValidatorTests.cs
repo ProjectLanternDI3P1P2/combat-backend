@@ -9,12 +9,14 @@ public class CreatePlayerValidatorTests
     private static readonly Faker Faker = new();
     private readonly CreatePlayerValidator _validator = new();
 
-    private static CreatePlayerCommand ValidCommand() => new(
-        Guid.NewGuid(),
-        Faker.Name.FirstName(),
-        Faker.Random.Int(1, 20),
-        Faker.Random.Int(1, 100),
-        Faker.Random.Int(100, 200));
+    private static CreatePlayerCommand ValidCommand() =>
+        new(
+            Guid.NewGuid(),
+            Faker.Name.FirstName(),
+            Faker.Random.Int(1, 20),
+            Faker.Random.Int(1, 100),
+            Faker.Random.Int(100, 200)
+        );
 
     [Fact]
     public void Validate_ValidCommand_HasNoValidationErrors()
@@ -33,7 +35,10 @@ public class CreatePlayerValidatorTests
     public void Validate_EmptyId_HasValidationErrorForId()
     {
         // Arrange
-        var command = ValidCommand() with { Id = Guid.Empty };
+        var command = ValidCommand() with
+        {
+            Id = Guid.Empty,
+        };
 
         // Act
         var result = _validator.TestValidate(command);
@@ -46,7 +51,10 @@ public class CreatePlayerValidatorTests
     public void Validate_EmptyName_HasValidationErrorForName()
     {
         // Arrange
-        var command = ValidCommand() with { Name = string.Empty };
+        var command = ValidCommand() with
+        {
+            Name = string.Empty,
+        };
 
         // Act
         var result = _validator.TestValidate(command);
@@ -59,7 +67,10 @@ public class CreatePlayerValidatorTests
     public void Validate_NameExceedsMaximumLength_HasValidationErrorForName()
     {
         // Arrange
-        var command = ValidCommand() with { Name = new string('a', 51) };
+        var command = ValidCommand() with
+        {
+            Name = new string('a', 51),
+        };
 
         // Act
         var result = _validator.TestValidate(command);
@@ -74,7 +85,10 @@ public class CreatePlayerValidatorTests
     public void Validate_InvalidAttack_HasValidationErrorForAttack(int attack)
     {
         // Arrange
-        var command = ValidCommand() with { Attack = attack };
+        var command = ValidCommand() with
+        {
+            Attack = attack,
+        };
 
         // Act
         var result = _validator.TestValidate(command);
@@ -89,7 +103,10 @@ public class CreatePlayerValidatorTests
     public void Validate_InvalidHealth_HasValidationErrorForHealth(int health)
     {
         // Arrange
-        var command = ValidCommand() with { Health = health };
+        var command = ValidCommand() with
+        {
+            Health = health,
+        };
 
         // Act
         var result = _validator.TestValidate(command);
@@ -104,7 +121,10 @@ public class CreatePlayerValidatorTests
     public void Validate_InvalidMaxHealth_HasValidationErrorForMaxHealth(int maxHealth)
     {
         // Arrange
-        var command = ValidCommand() with { MaxHealth = maxHealth };
+        var command = ValidCommand() with
+        {
+            MaxHealth = maxHealth,
+        };
 
         // Act
         var result = _validator.TestValidate(command);
