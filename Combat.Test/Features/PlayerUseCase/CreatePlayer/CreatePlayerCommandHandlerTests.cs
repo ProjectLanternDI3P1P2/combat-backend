@@ -1,8 +1,8 @@
 using Bogus;
 using Combat.Application.Features.PlayerUseCase.CreatePlayer;
+using Combat.Application.Messaging;
 using Combat.Domain.Entities;
 using Combat.Domain.Repositories;
-using Combat.Application.Messaging;
 using FluentAssertions;
 using Moq;
 
@@ -17,7 +17,10 @@ public class CreatePlayerCommandHandlerTests
 
     public CreatePlayerCommandHandlerTests()
     {
-        _handler = new CreatePlayerCommandHandler(_playerRepositoryMock.Object, _messagePublisherMock.Object);
+        _handler = new CreatePlayerCommandHandler(
+            _playerRepositoryMock.Object,
+            _messagePublisherMock.Object
+        );
     }
 
     [Fact]
@@ -29,11 +32,14 @@ public class CreatePlayerCommandHandlerTests
             _faker.Name.FirstName(),
             _faker.Random.Int(1, 20),
             _faker.Random.Int(1, 100),
-            _faker.Random.Int(100, 200));
+            _faker.Random.Int(100, 200)
+        );
         Player? capturedPlayer = null;
 
         _playerRepositoryMock
-            .Setup(repository => repository.AddPlayerAsync(It.IsAny<Player>(), It.IsAny<CancellationToken>()))
+            .Setup(repository =>
+                repository.AddPlayerAsync(It.IsAny<Player>(), It.IsAny<CancellationToken>())
+            )
             .Callback<Player, CancellationToken>((player, _) => capturedPlayer = player)
             .Returns(Task.CompletedTask);
 
@@ -42,8 +48,10 @@ public class CreatePlayerCommandHandlerTests
 
         // Assert
         _playerRepositoryMock.Verify(
-            repository => repository.AddPlayerAsync(It.IsAny<Player>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+            repository =>
+                repository.AddPlayerAsync(It.IsAny<Player>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
         capturedPlayer.Should().NotBeNull();
         capturedPlayer!.Id.Should().Be(command.Id);
         capturedPlayer.Name.Should().Be(command.Name);
@@ -51,11 +59,15 @@ public class CreatePlayerCommandHandlerTests
         capturedPlayer.Health.Should().Be(command.Health);
         capturedPlayer.MaxHealth.Should().Be(command.MaxHealth);
         _messagePublisherMock.Verify(
-            publisher => publisher.PublishAsync(
-                It.Is<MessageEnvelope>(message =>
-                    message.Type == PlayerCreatedMessageFactory.MessageType &&
-                    message.Version == PlayerCreatedMessageFactory.Version),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+            publisher =>
+                publisher.PublishAsync(
+                    It.Is<MessageEnvelope>(message =>
+                        message.Type == PlayerCreatedMessageFactory.MessageType
+                        && message.Version == PlayerCreatedMessageFactory.Version
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
     }
 }
