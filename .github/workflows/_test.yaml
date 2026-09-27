@@ -10,6 +10,20 @@ jobs:
   test:
     name: dotnet test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: combat_test
+          POSTGRES_USER: combat
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U combat -d combat_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -22,4 +36,6 @@ jobs:
       # Coverage is not collected here — the Sonar workflow collects it while wrapping
       # its own build, and doing it twice would only slow this job down.
       - name: Run tests
+        env:
+          COMBAT_TEST_DATABASE_CONNECTION: Host=localhost;Port=5432;Database=combat_test;Username=combat
         run: dotnet test --solution Combat.Presentation.slnx

@@ -1,10 +1,10 @@
+using System.Reflection;
 using Combat.Application.Features.MonsterTypes;
 using Combat.Application.PipelineBehavior;
 using Combat.Application.Ports;
 using Combat.Application.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Combat.Application;
 

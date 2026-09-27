@@ -29,15 +29,20 @@ public class GetPlayerByIdQueryHandlerTests
             Name = _faker.Name.FirstName(),
             Health = _faker.Random.Int(1, 100),
             MaxHealth = _faker.Random.Int(100, 200),
-            Attack = _faker.Random.Int(1, 20)
+            Attack = _faker.Random.Int(1, 20),
         };
 
         _playerRepositoryMock
-            .Setup(repository => repository.GetPlayerByIdAsync(playerId, It.IsAny<CancellationToken>()))
+            .Setup(repository =>
+                repository.GetPlayerByIdAsync(playerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(player);
 
         // Act
-        var result = await _handler.Handle(new GetPlayerByIdQuery(playerId), TestContext.Current.CancellationToken);
+        var result = await _handler.Handle(
+            new GetPlayerByIdQuery(playerId),
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         result.Should().NotBeNull();
@@ -55,14 +60,19 @@ public class GetPlayerByIdQueryHandlerTests
         var playerId = Guid.NewGuid();
 
         _playerRepositoryMock
-            .Setup(repository => repository.GetPlayerByIdAsync(playerId, It.IsAny<CancellationToken>()))
+            .Setup(repository =>
+                repository.GetPlayerByIdAsync(playerId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync((Player?)null);
 
         // Act
-        Func<Task> act = async () => await _handler.Handle(new GetPlayerByIdQuery(playerId), TestContext.Current.CancellationToken);
+        Func<Task> act = async () =>
+            await _handler.Handle(
+                new GetPlayerByIdQuery(playerId),
+                TestContext.Current.CancellationToken
+            );
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage($"*{playerId}*");
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage($"*{playerId}*");
     }
 }
