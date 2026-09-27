@@ -115,18 +115,19 @@ secret instead of storing it in the configuration file.
 
 ## Database migrations
 
-The template keeps the Reward workflow but deliberately ships no migration files.
-After creating and naming a service, generate its initial migration before running
-the application or integration tests:
+`Combat.Infrastructure` owns both the migrations and the design-time
+`CombatDbContextFactory`, including the EF Core Design dependency. The factory
+loads the Presentation configuration from the repository root and lets
+`ConnectionStrings__DefaultConnection` override it.
 
 ```powershell
 dotnet tool restore
-dotnet tool run dotnet-ef migrations add InitialCreate --project <Service>.Infrastructure --startup-project <Service>.Infrastructure
+dotnet tool run dotnet-ef migrations add <MigrationName> --project Combat.Infrastructure --startup-project Combat.Infrastructure
+dotnet tool run dotnet-ef database update --project Combat.Infrastructure --startup-project Combat.Infrastructure
 ```
 
-`<Service>.Infrastructure` owns migrations and the design-time DbContext factory.
-Development startup applies them before seeding. Production-like deployments must
-run migrations as a controlled rollout step, never by every application instance.
+Development startup applies migrations before seeding. Production-like deployments
+must run migrations as a controlled rollout step, never by every application instance.
 
 For host-based development, `appsettings.Development.json` targets the Compose
 PostgreSQL port `5433`. The Compose API uses its own `postgres:5432` connection.

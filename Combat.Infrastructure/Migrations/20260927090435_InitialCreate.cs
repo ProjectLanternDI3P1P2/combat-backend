@@ -16,22 +16,26 @@ namespace Combat.Infrastructure.Migrations
                 columns: table => new
                 {
                     PlayerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    PlayerName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    PlayerName = table.Column<string>(
+                        type: "character varying(100)",
+                        maxLength: 100,
+                        nullable: false
+                    ),
                     PlayerHealth = table.Column<int>(type: "integer", nullable: false),
                     PlayerMaxHealth = table.Column<int>(type: "integer", nullable: false),
-                    PlayerAttack = table.Column<int>(type: "integer", nullable: false)
+                    PlayerAttack = table.Column<int>(type: "integer", nullable: false),
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Players", x => x.PlayerId);
-                });
+                }
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "Players");
+            migrationBuilder.DropTable(name: "Players");
         }
     }
 }
