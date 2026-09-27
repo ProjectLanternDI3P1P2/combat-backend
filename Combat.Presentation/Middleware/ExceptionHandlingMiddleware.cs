@@ -1,7 +1,7 @@
+using System.Text.Json;
 using Combat.Application.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 using ILogger = Serilog.ILogger;
 
 namespace Combat.Presentation.Middleware;
@@ -9,7 +9,9 @@ namespace Combat.Presentation.Middleware;
 public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment environment)
     : IMiddleware
 {
-    private static readonly JsonSerializerOptions ProblemDetailsJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions ProblemDetailsJsonOptions = new(
+        JsonSerializerDefaults.Web
+    );
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
@@ -40,12 +42,22 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
         catch (ExternalServiceUnavailableException exception)
         {
             logger.Error(exception, "External service unavailable");
-            await HandleProblemAsync(context, StatusCodes.Status503ServiceUnavailable, "Service unavailable", exception.Message);
+            await HandleProblemAsync(
+                context,
+                StatusCodes.Status503ServiceUnavailable,
+                "Service unavailable",
+                exception.Message
+            );
         }
         catch (InvalidHeroCombatDataException exception)
         {
             logger.Error(exception, "Invalid hero combat data received");
-            await HandleProblemAsync(context, StatusCodes.Status502BadGateway, "Invalid upstream data", exception.Message);
+            await HandleProblemAsync(
+                context,
+                StatusCodes.Status502BadGateway,
+                "Invalid upstream data",
+                exception.Message
+            );
         }
         catch (Exception exception)
         {
@@ -73,7 +85,12 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
         await context.Response.WriteAsJsonAsync(problemDetails, context.RequestAborted);
     }
 
-    private static async Task HandleProblemAsync(HttpContext context, int statusCode, string title, string detail)
+    private static async Task HandleProblemAsync(
+        HttpContext context,
+        int statusCode,
+        string title,
+        string detail
+    )
     {
         var problemDetails = new ProblemDetails
         {
@@ -81,7 +98,7 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
             Title = title,
             Detail = detail,
             Status = statusCode,
-            Instance = context.Request.Path
+            Instance = context.Request.Path,
         };
 
         context.Response.StatusCode = statusCode;
@@ -89,7 +106,10 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
         await context.Response.WriteAsJsonAsync(problemDetails, context.RequestAborted);
     }
 
-    private static async Task HandleValidationExceptionAsync(HttpContext context, ValidationException exception)
+    private static async Task HandleValidationExceptionAsync(
+        HttpContext context,
+        ValidationException exception
+    )
     {
         var errors = exception
             .Errors.GroupBy(error => error.PropertyName)
@@ -124,7 +144,8 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
 
     private static async Task HandleMonsterTypeSourceUnavailableExceptionAsync(
         HttpContext context,
-        MonsterTypeSourceUnavailableException exception)
+        MonsterTypeSourceUnavailableException exception
+    )
     {
         var problemDetails = new ProblemDetails
         {
@@ -132,19 +153,21 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
             Title = "Monster type source unavailable",
             Detail = exception.Message,
             Status = StatusCodes.Status503ServiceUnavailable,
-            Instance = context.Request.Path
+            Instance = context.Request.Path,
         };
 
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsync(
             JsonSerializer.Serialize(problemDetails, ProblemDetailsJsonOptions),
-            context.RequestAborted);
+            context.RequestAborted
+        );
     }
 
     private static async Task HandleInvalidMonsterTypeCatalogExceptionAsync(
         HttpContext context,
-        InvalidMonsterTypeCatalogException exception)
+        InvalidMonsterTypeCatalogException exception
+    )
     {
         var problemDetails = new ProblemDetails
         {
@@ -152,7 +175,7 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
             Title = "Invalid monster type catalog",
             Detail = exception.Message,
             Status = StatusCodes.Status500InternalServerError,
-            Instance = context.Request.Path
+            Instance = context.Request.Path,
         };
         problemDetails.Extensions["errors"] = exception.Errors;
 
@@ -160,7 +183,8 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsync(
             JsonSerializer.Serialize(problemDetails, ProblemDetailsJsonOptions),
-            context.RequestAborted);
+            context.RequestAborted
+        );
     }
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)

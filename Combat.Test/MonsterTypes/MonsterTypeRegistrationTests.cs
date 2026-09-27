@@ -41,16 +41,19 @@ public class MonsterTypeRegistrationTests
     private static ServiceProvider CreateServices(bool enableMonsterTypeMocks)
     {
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test"
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test",
+                }
+            )
             .Build();
 
         var services = new ServiceCollection();
         services.AddInfrastructureServices(
             configuration,
-            enableMonsterTypeMocks: enableMonsterTypeMocks);
+            enableMonsterTypeMocks: enableMonsterTypeMocks
+        );
         services.AddApplicationServices();
         return services.BuildServiceProvider();
     }

@@ -21,7 +21,8 @@ public static class InfrastructureServiceRegistration
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services,
         IConfiguration configuration,
-        bool enableMonsterTypeMocks = false)
+        bool enableMonsterTypeMocks = false
+    )
     {
         DatabaseOptions databaseOptions =
             configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()

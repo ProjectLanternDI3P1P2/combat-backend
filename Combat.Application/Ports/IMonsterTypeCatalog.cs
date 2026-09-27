@@ -8,5 +8,6 @@ public interface IMonsterTypeCatalog
 
     Task<IReadOnlyList<MonsterTypeDefinition>> ResolveRequiredAsync(
         IReadOnlyCollection<Guid> monsterTypeIds,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }

@@ -9,7 +9,8 @@ public sealed class GetMonsterTypesQueryHandler(IMonsterTypeCatalog catalog)
 {
     public Task<IReadOnlyList<MonsterTypeDefinition>> Handle(
         GetMonsterTypesQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         return catalog.GetAllAsync(cancellationToken);
     }

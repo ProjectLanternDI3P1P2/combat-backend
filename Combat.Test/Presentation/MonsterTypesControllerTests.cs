@@ -25,16 +25,25 @@ public class MonsterTypesControllerTests
     public async Task GetAll_ValidatedCatalog_ReturnsMappedDtos()
     {
         // Arrange
-        var monsterType = new MonsterTypeDefinition(Guid.NewGuid(), "Cave Rat", false, 18, 5, 1, 12);
+        var monsterType = new MonsterTypeDefinition(
+            Guid.NewGuid(),
+            "Cave Rat",
+            false,
+            18,
+            5,
+            1,
+            12
+        );
         _mediator
-            .Setup(mediator => mediator.Send(
-                It.IsAny<GetMonsterTypesQuery>(),
-                It.IsAny<CancellationToken>()))
+            .Setup(mediator =>
+                mediator.Send(It.IsAny<GetMonsterTypesQuery>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(new[] { monsterType });
 
         // Act
-        ActionResult<IReadOnlyList<MonsterTypeDto>> action =
-            await _controller.GetAll(TestContext.Current.CancellationToken);
+        ActionResult<IReadOnlyList<MonsterTypeDto>> action = await _controller.GetAll(
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         OkObjectResult ok = action.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -49,15 +58,21 @@ public class MonsterTypesControllerTests
         Guid monsterTypeId = Guid.NewGuid();
         var monsterType = new MonsterTypeDefinition(monsterTypeId, "Cave Rat", false, 18, 5, 1, 12);
         _mediator
-            .Setup(mediator => mediator.Send(
-                It.Is<GetMonsterTypeByIdQuery>(query => query.MonsterTypeId == monsterTypeId.ToString()),
-                It.IsAny<CancellationToken>()))
+            .Setup(mediator =>
+                mediator.Send(
+                    It.Is<GetMonsterTypeByIdQuery>(query =>
+                        query.MonsterTypeId == monsterTypeId.ToString()
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync(monsterType);
 
         // Act
         ActionResult<MonsterTypeDto> action = await _controller.GetById(
             monsterTypeId.ToString(),
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         OkObjectResult ok = action.Result.Should().BeOfType<OkObjectResult>().Subject;

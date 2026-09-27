@@ -10,7 +10,9 @@ public static class MockHeroCatalog
 {
     public static readonly Guid WarriorHeroId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid MageHeroId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    public static readonly Guid WoundedRogueHeroId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    public static readonly Guid WoundedRogueHeroId = Guid.Parse(
+        "33333333-3333-3333-3333-333333333333"
+    );
 
     private static readonly Dictionary<Guid, HeroCombatSnapshot> Heroes = new[]
     {
@@ -23,13 +25,18 @@ public static class MockHeroCatalog
             MaxHp = 120,
             CurrentMana = 20,
             MaxMana = 20,
-            Stats = new HeroCombatStats { Attack = 18, Defense = 12, Speed = 6 },
+            Stats = new HeroCombatStats
+            {
+                Attack = 18,
+                Defense = 12,
+                Speed = 6,
+            },
             Abilities =
             [
                 Ability("a1000000-0000-0000-0000-000000000001", "Heavy Strike", 5, "SingleEnemy"),
-                Ability("a1000000-0000-0000-0000-000000000002", "Shield Wall", 8, "Self")
+                Ability("a1000000-0000-0000-0000-000000000002", "Shield Wall", 8, "Self"),
             ],
-            IsMocked = true
+            IsMocked = true,
         },
         new HeroCombatSnapshot
         {
@@ -40,14 +47,19 @@ public static class MockHeroCatalog
             MaxHp = 70,
             CurrentMana = 80,
             MaxMana = 80,
-            Stats = new HeroCombatStats { Attack = 8, Defense = 5, Speed = 9 },
+            Stats = new HeroCombatStats
+            {
+                Attack = 8,
+                Defense = 5,
+                Speed = 9,
+            },
             Abilities =
             [
                 Ability("a2000000-0000-0000-0000-000000000001", "Fireball", 15, "SingleEnemy"),
                 Ability("a2000000-0000-0000-0000-000000000002", "Frost Nova", 25, "AllEnemies"),
-                Ability("a2000000-0000-0000-0000-000000000003", "Heal", 12, "SingleAlly")
+                Ability("a2000000-0000-0000-0000-000000000003", "Heal", 12, "SingleAlly"),
             ],
-            IsMocked = true
+            IsMocked = true,
         },
         new HeroCombatSnapshot
         {
@@ -59,22 +71,33 @@ public static class MockHeroCatalog
             MaxHp = 85,
             CurrentMana = 10,
             MaxMana = 40,
-            Stats = new HeroCombatStats { Attack = 14, Defense = 7, Speed = 14 },
+            Stats = new HeroCombatStats
+            {
+                Attack = 14,
+                Defense = 7,
+                Speed = 14,
+            },
             Abilities =
             [
-                Ability("a3000000-0000-0000-0000-000000000001", "Backstab", 10, "SingleEnemy")
+                Ability("a3000000-0000-0000-0000-000000000001", "Backstab", 10, "SingleEnemy"),
             ],
-            IsMocked = true
-        }
+            IsMocked = true,
+        },
     }.ToDictionary(hero => hero.HeroId);
 
     public static HeroCombatSnapshot? Find(Guid heroId) => Heroes.GetValueOrDefault(heroId);
 
-    private static HeroAbility Ability(string abilityId, string name, int manaCost, string targetType) => new()
-    {
-        AbilityId = Guid.Parse(abilityId),
-        Name = name,
-        ManaCost = manaCost,
-        TargetType = targetType
-    };
+    private static HeroAbility Ability(
+        string abilityId,
+        string name,
+        int manaCost,
+        string targetType
+    ) =>
+        new()
+        {
+            AbilityId = Guid.Parse(abilityId),
+            Name = name,
+            ManaCost = manaCost,
+            TargetType = targetType,
+        };
 }

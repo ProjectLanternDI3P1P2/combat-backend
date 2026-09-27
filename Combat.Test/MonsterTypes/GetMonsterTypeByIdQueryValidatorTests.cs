@@ -14,8 +14,9 @@ public class GetMonsterTypeByIdQueryValidatorTests
     public void Validate_InvalidId_HasValidationErrorForMonsterTypeId(string monsterTypeId)
     {
         // Act
-        TestValidationResult<GetMonsterTypeByIdQuery> result =
-            _validator.TestValidate(new GetMonsterTypeByIdQuery(monsterTypeId));
+        TestValidationResult<GetMonsterTypeByIdQuery> result = _validator.TestValidate(
+            new GetMonsterTypeByIdQuery(monsterTypeId)
+        );
 
         // Assert
         result.ShouldHaveValidationErrorFor(query => query.MonsterTypeId);
@@ -25,8 +26,9 @@ public class GetMonsterTypeByIdQueryValidatorTests
     public void Validate_NonEmptyGuid_HasNoValidationErrors()
     {
         // Act
-        TestValidationResult<GetMonsterTypeByIdQuery> result =
-            _validator.TestValidate(new GetMonsterTypeByIdQuery(Guid.NewGuid().ToString()));
+        TestValidationResult<GetMonsterTypeByIdQuery> result = _validator.TestValidate(
+            new GetMonsterTypeByIdQuery(Guid.NewGuid().ToString())
+        );
 
         // Assert
         result.ShouldNotHaveAnyValidationErrors();

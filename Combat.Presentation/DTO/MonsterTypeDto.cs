@@ -9,7 +9,8 @@ public sealed record MonsterTypeDto(
     int BaseHealth,
     int BaseAttack,
     int BaseDefense,
-    int BaseSpeed)
+    int BaseSpeed
+)
 {
     public static MonsterTypeDto From(MonsterTypeDefinition monsterType)
     {
@@ -20,6 +21,7 @@ public sealed record MonsterTypeDto(
             monsterType.BaseHealth,
             monsterType.BaseAttack,
             monsterType.BaseDefense,
-            monsterType.BaseSpeed);
+            monsterType.BaseSpeed
+        );
     }
 }

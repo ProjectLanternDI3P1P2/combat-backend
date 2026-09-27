@@ -6,10 +6,13 @@ namespace Combat.Infrastructure.MonsterMocks;
 
 public sealed class UnavailableMonsterTypeSource : IMonsterTypeSource
 {
-    public Task<IReadOnlyCollection<MonsterTypeDefinition>> GetAllAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyCollection<MonsterTypeDefinition>> GetAllAsync(
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromException<IReadOnlyCollection<MonsterTypeDefinition>>(
-            new MonsterTypeSourceUnavailableException());
+            new MonsterTypeSourceUnavailableException()
+        );
     }
 }
