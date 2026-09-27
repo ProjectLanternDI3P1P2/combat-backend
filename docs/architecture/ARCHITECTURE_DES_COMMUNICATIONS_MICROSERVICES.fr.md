@@ -132,6 +132,14 @@ Les contrats gRPC sont des packages NuGet Protobuf versionnés et possédés par
 
 Combat persiste les snapshots Player et Rewards obtenus à sa création. Un changement d'équipement ultérieur ne modifie pas ce combat. Le frontend bloque équiper/déséquiper en combat ; le MVP n'ajoute pas de réservation backend.
 
+La clarification du meeting Dungeon/Combat sur la génération des monstres et
+le suivi des PV/mana pendant le run est documentée dans
+[CONTEXTE_METIER_COMBAT.fr.md](CONTEXTE_METIER_COMBAT.fr.md). Les contrats
+devront être enrichis pour transmettre les PV/mana courants de Dungeon à
+Combat et les états finaux de Combat à Dungeon ; la forme, la compatibilité,
+la version et le propriétaire de chaque évolution restent à définir dans le
+contrat concerné.
+
 ## 5. Échanges RabbitMQ asynchrones
 
 ### 5.1 Flux statistiques centralisés vers Progression

@@ -4,10 +4,13 @@ using Combat.Infrastructure.Persistence.Seeding;
 using Combat.Presentation.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+bool enableMonsterTypeMocks = MonsterTypeMockActivation.IsEnabled(builder.Environment, builder.Configuration);
 
 builder.ConfigureApi();
 
-builder.Services.AddInfrastructureServices(builder.Configuration).AddApplicationServices();
+builder.Services
+    .AddInfrastructureServices(builder.Configuration, enableMonsterTypeMocks)
+    .AddApplicationServices();
 
 var app = builder.Build();
 
