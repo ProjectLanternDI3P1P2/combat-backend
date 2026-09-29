@@ -14,24 +14,35 @@ public class FallbackHeroSnapshotClientTests
     private readonly Mock<IHeroSnapshotClient> _realClientMock = new();
     private readonly MockHeroSnapshotClient _mockClient = new(new Mock<ILogger>().Object);
 
-    private FallbackHeroSnapshotClient CreateClient(bool isMockFallbackEnabled = true) => new(
-        _realClientMock.Object,
-        _mockClient,
-        Options.Create(new PlayerServiceOptions { IsMockFallbackEnabled = isMockFallbackEnabled }),
-        new Mock<ILogger>().Object);
+    private FallbackHeroSnapshotClient CreateClient(bool isMockFallbackEnabled = true) =>
+        new(
+            _realClientMock.Object,
+            _mockClient,
+            Options.Create(
+                new PlayerServiceOptions { IsMockFallbackEnabled = isMockFallbackEnabled }
+            ),
+            new Mock<ILogger>().Object
+        );
 
     [Fact]
     public async Task GetCombatantSnapshotAsync_RealServiceAnswers_ReturnsRealData()
     {
         // Arrange
         Guid heroId = MockHeroCatalog.WarriorHeroId;
-        HeroCombatSnapshot realHero = MockHeroCatalog.Find(heroId)! with { Name = "Real Aldric", IsMocked = false };
+        HeroCombatSnapshot realHero = MockHeroCatalog.Find(heroId)! with
+        {
+            Name = "Real Aldric",
+            IsMocked = false,
+        };
         _realClientMock
-            .Setup(client => client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(realHero);
 
         // Act
-        HeroCombatSnapshot result = await CreateClient().GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
+        HeroCombatSnapshot result = await CreateClient()
+            .GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().Be(realHero);
@@ -44,11 +55,14 @@ public class FallbackHeroSnapshotClientTests
         // Arrange
         Guid heroId = MockHeroCatalog.WarriorHeroId;
         _realClientMock
-            .Setup(client => client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ThrowsAsync(new ExternalServiceUnavailableException("Player"));
 
         // Act
-        HeroCombatSnapshot result = await CreateClient().GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
+        HeroCombatSnapshot result = await CreateClient()
+            .GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         result.HeroId.Should().Be(heroId);
@@ -61,11 +75,14 @@ public class FallbackHeroSnapshotClientTests
         // Arrange
         Guid heroId = MockHeroCatalog.WarriorHeroId;
         _realClientMock
-            .Setup(client => client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ThrowsAsync(new HeroNotFoundException(heroId));
 
         // Act
-        Func<Task> act = () => CreateClient().GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            CreateClient().GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<HeroNotFoundException>();
@@ -77,12 +94,15 @@ public class FallbackHeroSnapshotClientTests
         // Arrange
         Guid heroId = MockHeroCatalog.WarriorHeroId;
         _realClientMock
-            .Setup(client => client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ThrowsAsync(new ExternalServiceUnavailableException("Player"));
 
         // Act
-        Func<Task> act = () => CreateClient(isMockFallbackEnabled: false)
-            .GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            CreateClient(isMockFallbackEnabled: false)
+                .GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<ExternalServiceUnavailableException>();
@@ -94,11 +114,14 @@ public class FallbackHeroSnapshotClientTests
         // Arrange
         var heroId = Guid.NewGuid();
         _realClientMock
-            .Setup(client => client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatantSnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ThrowsAsync(new ExternalServiceUnavailableException("Player"));
 
         // Act
-        Func<Task> act = () => CreateClient().GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            CreateClient().GetCombatantSnapshotAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<HeroNotFoundException>();

@@ -9,13 +9,19 @@ namespace Combat.Application.Features.MonsterUseCase.GenerateMonster;
 
 public sealed class GenerateMonsterCommandHandler(
     IMonsterTypeCatalog monsterTypeCatalog,
-    IMonsterRepository monsterRepository) : IRequestHandler<GenerateMonsterCommand, GenerateMonsterResult>
+    IMonsterRepository monsterRepository
+) : IRequestHandler<GenerateMonsterCommand, GenerateMonsterResult>
 {
-    public async Task<GenerateMonsterResult> Handle(GenerateMonsterCommand request, CancellationToken cancellationToken)
+    public async Task<GenerateMonsterResult> Handle(
+        GenerateMonsterCommand request,
+        CancellationToken cancellationToken
+    )
     {
-        IReadOnlyList<MonsterTypeDefinition> resolved = await monsterTypeCatalog.ResolveRequiredAsync(
-            [request.MonsterTypeId],
-            cancellationToken);
+        IReadOnlyList<MonsterTypeDefinition> resolved =
+            await monsterTypeCatalog.ResolveRequiredAsync(
+                [request.MonsterTypeId],
+                cancellationToken
+            );
         MonsterTypeDefinition monsterType = resolved[0];
 
         Monster monster = new()
@@ -27,7 +33,7 @@ public sealed class GenerateMonsterCommandHandler(
             BaseAttack = monsterType.BaseAttack,
             BaseDefense = monsterType.BaseDefense,
             BaseSpeed = monsterType.BaseSpeed,
-            State = MonsterState.Alive
+            State = MonsterState.Alive,
         };
 
         await monsterRepository.AddMonsterAsync(monster, cancellationToken);
@@ -41,7 +47,7 @@ public sealed class GenerateMonsterCommandHandler(
             BaseAttack = monster.BaseAttack,
             BaseDefense = monster.BaseDefense,
             BaseSpeed = monster.BaseSpeed,
-            State = monster.State
+            State = monster.State,
         };
     }
 }

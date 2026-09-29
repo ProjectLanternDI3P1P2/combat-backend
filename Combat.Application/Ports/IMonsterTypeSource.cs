@@ -4,5 +4,7 @@ namespace Combat.Application.Ports;
 
 public interface IMonsterTypeSource
 {
-    Task<IReadOnlyCollection<MonsterTypeDefinition>> GetAllAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<MonsterTypeDefinition>> GetAllAsync(
+        CancellationToken cancellationToken
+    );
 }

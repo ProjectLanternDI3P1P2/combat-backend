@@ -8,19 +8,25 @@ namespace Combat.Application.Features.MonsterTypes;
 
 public sealed class MonsterTypeCatalog(
     IMonsterTypeSource source,
-    IValidator<MonsterTypeDefinition> validator) : IMonsterTypeCatalog
+    IValidator<MonsterTypeDefinition> validator
+) : IMonsterTypeCatalog
 {
-    public async Task<IReadOnlyList<MonsterTypeDefinition>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<MonsterTypeDefinition>> GetAllAsync(
+        CancellationToken cancellationToken
+    )
     {
-        IReadOnlyCollection<MonsterTypeDefinition>? sourceDefinitions =
-            await source.GetAllAsync(cancellationToken);
+        IReadOnlyCollection<MonsterTypeDefinition>? sourceDefinitions = await source.GetAllAsync(
+            cancellationToken
+        );
 
         if (sourceDefinitions is null)
         {
-            throw new InvalidMonsterTypeCatalogException(new Dictionary<string, string[]>
-            {
-                ["monsterTypes"] = ["The source returned no catalog."]
-            });
+            throw new InvalidMonsterTypeCatalogException(
+                new Dictionary<string, string[]>
+                {
+                    ["monsterTypes"] = ["The source returned no catalog."],
+                }
+            );
         }
 
         MonsterTypeDefinition[] definitions = [.. sourceDefinitions];
@@ -44,25 +50,29 @@ public sealed class MonsterTypeCatalog(
 
             foreach (ValidationFailure failure in result.Errors)
             {
-                AddError(errors, $"monsterTypes[{index}].{failure.PropertyName}", failure.ErrorMessage);
+                AddError(
+                    errors,
+                    $"monsterTypes[{index}].{failure.PropertyName}",
+                    failure.ErrorMessage
+                );
             }
         }
 
-        foreach (IGrouping<Guid, MonsterTypeDefinition> duplicate in definitions
-                     .OfType<MonsterTypeDefinition>()
-                     .GroupBy(monsterType => monsterType.Id)
-                     .Where(group => group.Count() > 1))
+        foreach (
+            IGrouping<Guid, MonsterTypeDefinition> duplicate in definitions
+                .OfType<MonsterTypeDefinition>()
+                .GroupBy(monsterType => monsterType.Id)
+                .Where(group => group.Count() > 1)
+        )
         {
-            AddError(
-                errors,
-                "monsterTypes",
-                $"Monster type Id '{duplicate.Key}' is duplicated.");
+            AddError(errors, "monsterTypes", $"Monster type Id '{duplicate.Key}' is duplicated.");
         }
 
         if (errors.Count > 0)
         {
             throw new InvalidMonsterTypeCatalogException(
-                errors.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray()));
+                errors.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray())
+            );
         }
 
         return Array.AsReadOnly(definitions);
@@ -70,26 +80,35 @@ public sealed class MonsterTypeCatalog(
 
     public async Task<IReadOnlyList<MonsterTypeDefinition>> ResolveRequiredAsync(
         IReadOnlyCollection<Guid> monsterTypeIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ArgumentNullException.ThrowIfNull(monsterTypeIds);
 
         List<ValidationFailure> failures = [];
         if (monsterTypeIds.Any(monsterTypeId => monsterTypeId == Guid.Empty))
         {
-            failures.Add(new ValidationFailure("MonsterTypeIds", "Monster type IDs must not be empty."));
+            failures.Add(
+                new ValidationFailure("MonsterTypeIds", "Monster type IDs must not be empty.")
+            );
         }
 
-        Guid[] duplicateIds = [.. monsterTypeIds
-            .GroupBy(monsterTypeId => monsterTypeId)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)];
+        Guid[] duplicateIds =
+        [
+            .. monsterTypeIds
+                .GroupBy(monsterTypeId => monsterTypeId)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key),
+        ];
 
         if (duplicateIds.Length > 0)
         {
-            failures.Add(new ValidationFailure(
-                "MonsterTypeIds",
-                $"Monster type IDs must be unique. Duplicates: {string.Join(", ", duplicateIds)}."));
+            failures.Add(
+                new ValidationFailure(
+                    "MonsterTypeIds",
+                    $"Monster type IDs must be unique. Duplicates: {string.Join(", ", duplicateIds)}."
+                )
+            );
         }
 
         if (failures.Count > 0)
@@ -98,26 +117,34 @@ public sealed class MonsterTypeCatalog(
         }
 
         IReadOnlyList<MonsterTypeDefinition> catalog = await GetAllAsync(cancellationToken);
-        IReadOnlyDictionary<Guid, MonsterTypeDefinition> definitionsById =
-            catalog.ToDictionary(monsterType => monsterType.Id);
+        IReadOnlyDictionary<Guid, MonsterTypeDefinition> definitionsById = catalog.ToDictionary(
+            monsterType => monsterType.Id
+        );
 
-        Guid[] unknownIds = [.. monsterTypeIds
-            .Where(monsterTypeId => !definitionsById.ContainsKey(monsterTypeId))];
+        Guid[] unknownIds =
+        [
+            .. monsterTypeIds.Where(monsterTypeId => !definitionsById.ContainsKey(monsterTypeId)),
+        ];
 
         if (unknownIds.Length > 0)
         {
             throw new KeyNotFoundException(
-                $"Unknown monster type IDs: {string.Join(", ", unknownIds)}.");
+                $"Unknown monster type IDs: {string.Join(", ", unknownIds)}."
+            );
         }
 
-        MonsterTypeDefinition[] resolved = [.. monsterTypeIds.Select(monsterTypeId => definitionsById[monsterTypeId])];
+        MonsterTypeDefinition[] resolved =
+        [
+            .. monsterTypeIds.Select(monsterTypeId => definitionsById[monsterTypeId]),
+        ];
         return Array.AsReadOnly(resolved);
     }
 
     private static void AddError(
         IDictionary<string, List<string>> errors,
         string key,
-        string message)
+        string message
+    )
     {
         if (!errors.TryGetValue(key, out List<string>? messages))
         {

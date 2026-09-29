@@ -8,8 +8,11 @@ public sealed class GetMonsterTypeByIdQueryValidator : AbstractValidator<GetMons
     {
         RuleFor(query => query.MonsterTypeId)
             .Cascade(CascadeMode.Stop)
-            .NotEmpty().WithMessage("MonsterTypeId is required.")
-            .Must(monsterTypeId => Guid.TryParse(monsterTypeId, out Guid parsed) && parsed != Guid.Empty)
+            .NotEmpty()
+            .WithMessage("MonsterTypeId is required.")
+            .Must(monsterTypeId =>
+                Guid.TryParse(monsterTypeId, out Guid parsed) && parsed != Guid.Empty
+            )
             .WithMessage("MonsterTypeId must be a non-empty GUID.");
     }
 }

@@ -4,5 +4,5 @@ namespace Combat.Domain.Enums;
 public enum MonsterState
 {
     Alive,
-    Defeated
+    Defeated,
 }

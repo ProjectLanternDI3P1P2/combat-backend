@@ -6,7 +6,6 @@ public class GetHeroCombatDataValidator : AbstractValidator<GetHeroCombatDataQue
 {
     public GetHeroCombatDataValidator()
     {
-        RuleFor(q => q.HeroId)
-            .NotEmpty().WithMessage("HeroId is required.");
+        RuleFor(q => q.HeroId).NotEmpty().WithMessage("HeroId is required.");
     }
 }

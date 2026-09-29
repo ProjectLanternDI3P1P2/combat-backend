@@ -11,18 +11,27 @@ namespace Combat.Presentation.Controllers;
 public sealed class MonsterController(IMediator mediator, ILogger logger) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Generate([FromBody] MonsterDto monsterDto, CancellationToken cancellationToken)
+    public async Task<IActionResult> Generate(
+        [FromBody] MonsterDto monsterDto,
+        CancellationToken cancellationToken
+    )
     {
         logger.Information(
             "Received request to generate monster of type {MonsterTypeId} for combat {CombatId}.",
             monsterDto.MonsterTypeId,
-            monsterDto.CombatId);
+            monsterDto.CombatId
+        );
 
         GenerateMonsterResult result = await mediator.Send(
             new GenerateMonsterCommand(monsterDto.CombatId, monsterDto.MonsterTypeId),
-            cancellationToken);
+            cancellationToken
+        );
 
-        logger.Information("Monster {MonsterId} generated successfully for combat {CombatId}.", result.MonsterId, result.CombatId);
+        logger.Information(
+            "Monster {MonsterId} generated successfully for combat {CombatId}.",
+            result.MonsterId,
+            result.CombatId
+        );
         return Ok(result);
     }
 }

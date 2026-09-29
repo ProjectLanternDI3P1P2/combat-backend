@@ -13,12 +13,16 @@ namespace Combat.Presentation.Controllers;
 public sealed class MonsterTypesController(IMediator mediator, ILogger logger) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<MonsterTypeDto>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<MonsterTypeDto>>> GetAll(
+        CancellationToken cancellationToken
+    )
     {
         logger.Information("Received request to get monster types.");
 
-        IReadOnlyList<MonsterTypeDefinition> monsterTypes =
-            await mediator.Send(new GetMonsterTypesQuery(), cancellationToken);
+        IReadOnlyList<MonsterTypeDefinition> monsterTypes = await mediator.Send(
+            new GetMonsterTypesQuery(),
+            cancellationToken
+        );
         MonsterTypeDto[] response = [.. monsterTypes.Select(MonsterTypeDto.From)];
 
         logger.Information("Retrieved {MonsterTypeCount} monster types.", response.Length);
@@ -28,12 +32,15 @@ public sealed class MonsterTypesController(IMediator mediator, ILogger logger) :
     [HttpGet("{monsterTypeId}")]
     public async Task<ActionResult<MonsterTypeDto>> GetById(
         string monsterTypeId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         logger.Information("Received request to get monster type {MonsterTypeId}.", monsterTypeId);
 
-        MonsterTypeDefinition monsterType =
-            await mediator.Send(new GetMonsterTypeByIdQuery(monsterTypeId), cancellationToken);
+        MonsterTypeDefinition monsterType = await mediator.Send(
+            new GetMonsterTypeByIdQuery(monsterTypeId),
+            cancellationToken
+        );
 
         logger.Information("Retrieved monster type {MonsterTypeId}.", monsterType.Id);
         return Ok(MonsterTypeDto.From(monsterType));

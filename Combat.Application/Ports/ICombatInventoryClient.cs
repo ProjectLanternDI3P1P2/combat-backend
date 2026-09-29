@@ -6,5 +6,8 @@ namespace Combat.Application.Ports;
 public interface ICombatInventoryClient
 {
     /// <exception cref="Exceptions.ExternalServiceUnavailableException">The Rewards service cannot be reached.</exception>
-    Task<CombatInventorySnapshot> GetCombatInventorySnapshotAsync(Guid heroId, CancellationToken cancellationToken);
+    Task<CombatInventorySnapshot> GetCombatInventorySnapshotAsync(
+        Guid heroId,
+        CancellationToken cancellationToken
+    );
 }

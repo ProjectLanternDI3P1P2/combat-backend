@@ -17,7 +17,10 @@ public class GenerateMonsterCommandHandlerTests
 
     public GenerateMonsterCommandHandlerTests()
     {
-        _handler = new GenerateMonsterCommandHandler(_monsterTypeCatalogMock.Object, _monsterRepositoryMock.Object);
+        _handler = new GenerateMonsterCommandHandler(
+            _monsterTypeCatalogMock.Object,
+            _monsterRepositoryMock.Object
+        );
     }
 
     [Fact]
@@ -31,12 +34,17 @@ public class GenerateMonsterCommandHandlerTests
         Monster? capturedMonster = null;
 
         _monsterTypeCatalogMock
-            .Setup(catalog => catalog.ResolveRequiredAsync(
-                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == monsterTypeId),
-                It.IsAny<CancellationToken>()))
+            .Setup(catalog =>
+                catalog.ResolveRequiredAsync(
+                    It.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == monsterTypeId),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync([monsterType]);
         _monsterRepositoryMock
-            .Setup(repository => repository.AddMonsterAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()))
+            .Setup(repository =>
+                repository.AddMonsterAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>())
+            )
             .Callback<Monster, CancellationToken>((monster, _) => capturedMonster = monster)
             .Returns(Task.CompletedTask);
 
@@ -68,19 +76,24 @@ public class GenerateMonsterCommandHandlerTests
         var command = new GenerateMonsterCommand(Guid.NewGuid(), monsterTypeId);
 
         _monsterTypeCatalogMock
-            .Setup(catalog => catalog.ResolveRequiredAsync(
-                It.IsAny<IReadOnlyCollection<Guid>>(),
-                It.IsAny<CancellationToken>()))
+            .Setup(catalog =>
+                catalog.ResolveRequiredAsync(
+                    It.IsAny<IReadOnlyCollection<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ThrowsAsync(new KeyNotFoundException($"Unknown monster type IDs: {monsterTypeId}."));
 
         // Act
-        Func<Task> act = async () => await _handler.Handle(command, TestContext.Current.CancellationToken);
+        Func<Task> act = async () =>
+            await _handler.Handle(command, TestContext.Current.CancellationToken);
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage($"*{monsterTypeId}*");
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage($"*{monsterTypeId}*");
         _monsterRepositoryMock.Verify(
-            repository => repository.AddMonsterAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            repository =>
+                repository.AddMonsterAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
     }
 }

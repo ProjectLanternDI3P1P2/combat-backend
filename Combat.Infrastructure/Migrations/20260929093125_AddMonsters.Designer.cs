@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Combat.Infrastructure.Migrations
 {
     [DbContext(typeof(CombatDbContext))]
-    [Migration("20260925122053_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260929093125_AddMonsters")]
+    partial class AddMonsters
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

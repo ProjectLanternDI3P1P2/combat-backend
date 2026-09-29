@@ -7,7 +7,10 @@ namespace Combat.Infrastructure.ExternalServices.Rewards;
 /// <summary>Local stand-in for the Rewards service <c>GetCombatInventorySnapshot</c> operation.</summary>
 public sealed class MockCombatInventoryClient(ILogger logger) : ICombatInventoryClient
 {
-    public Task<CombatInventorySnapshot> GetCombatInventorySnapshotAsync(Guid heroId, CancellationToken cancellationToken)
+    public Task<CombatInventorySnapshot> GetCombatInventorySnapshotAsync(
+        Guid heroId,
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
 

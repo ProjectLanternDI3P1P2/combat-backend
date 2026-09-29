@@ -31,7 +31,10 @@ public class MonsterRepositoryTests
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        var storedMonster = await dbContext.Monsters.FindAsync([monster.MonsterId], TestContext.Current.CancellationToken);
+        var storedMonster = await dbContext.Monsters.FindAsync(
+            [monster.MonsterId],
+            TestContext.Current.CancellationToken
+        );
         storedMonster.Should().NotBeNull();
         storedMonster!.CombatId.Should().Be(monster.CombatId);
         storedMonster.IsBoss.Should().Be(monster.IsBoss);
@@ -50,7 +53,7 @@ public class MonsterRepositoryTests
             BaseAttack = 8,
             BaseDefense = 4,
             BaseSpeed = 10,
-            State = MonsterState.Alive
+            State = MonsterState.Alive,
         };
     }
 }

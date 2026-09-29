@@ -9,11 +9,14 @@ public sealed class GetMonsterTypeByIdQueryHandler(IMonsterTypeCatalog catalog)
 {
     public async Task<MonsterTypeDefinition> Handle(
         GetMonsterTypeByIdQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         Guid monsterTypeId = Guid.Parse(request.MonsterTypeId);
-        IReadOnlyList<MonsterTypeDefinition> resolved =
-            await catalog.ResolveRequiredAsync([monsterTypeId], cancellationToken);
+        IReadOnlyList<MonsterTypeDefinition> resolved = await catalog.ResolveRequiredAsync(
+            [monsterTypeId],
+            cancellationToken
+        );
 
         return resolved[0];
     }

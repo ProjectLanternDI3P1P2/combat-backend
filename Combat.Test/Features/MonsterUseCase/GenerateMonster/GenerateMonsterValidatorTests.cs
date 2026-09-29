@@ -26,7 +26,10 @@ public class GenerateMonsterValidatorTests
     public void Validate_EmptyCombatId_HasValidationErrorForCombatId()
     {
         // Arrange
-        var command = ValidCommand() with { CombatId = Guid.Empty };
+        var command = ValidCommand() with
+        {
+            CombatId = Guid.Empty,
+        };
 
         // Act
         var result = _validator.TestValidate(command);
@@ -39,7 +42,10 @@ public class GenerateMonsterValidatorTests
     public void Validate_EmptyMonsterTypeId_HasValidationErrorForMonsterTypeId()
     {
         // Arrange
-        var command = ValidCommand() with { MonsterTypeId = Guid.Empty };
+        var command = ValidCommand() with
+        {
+            MonsterTypeId = Guid.Empty,
+        };
 
         // Act
         var result = _validator.TestValidate(command);

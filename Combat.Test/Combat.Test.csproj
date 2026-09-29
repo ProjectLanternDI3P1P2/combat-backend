@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -10,15 +9,19 @@
   <ItemGroup>
     <PackageReference Include="Bogus" Version="35.6.5" />
     <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.76.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Respawn" Version="7.0.0" />
     <PackageReference Include="xunit.v3" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Combat.Application\Combat.Application.csproj" />
+    <ProjectReference Include="..\Combat.Contracts\Combat.Contracts.csproj" />
     <ProjectReference Include="..\Combat.Domain\Combat.Domain.csproj" />
     <ProjectReference Include="..\Combat.Infrastructure\Combat.Infrastructure.csproj" />
     <ProjectReference Include="..\Combat.Presentation\Combat.Presentation.csproj" />
@@ -27,5 +30,4 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
 </Project>

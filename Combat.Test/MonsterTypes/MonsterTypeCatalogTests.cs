@@ -19,15 +19,19 @@ public class MonsterTypeCatalogTests
         var catalog = new MonsterTypeCatalog(new MockMonsterTypeSource(), _validator);
 
         // Act
-        IReadOnlyList<MonsterTypeDefinition> first =
-            await catalog.GetAllAsync(TestContext.Current.CancellationToken);
-        IReadOnlyList<MonsterTypeDefinition> second =
-            await catalog.GetAllAsync(TestContext.Current.CancellationToken);
+        IReadOnlyList<MonsterTypeDefinition> first = await catalog.GetAllAsync(
+            TestContext.Current.CancellationToken
+        );
+        IReadOnlyList<MonsterTypeDefinition> second = await catalog.GetAllAsync(
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         first.Should().NotBeEmpty();
         first.Select(monsterType => monsterType.Id).Should().OnlyHaveUniqueItems();
-        second.Select(monsterType => monsterType.Id).Should()
+        second
+            .Select(monsterType => monsterType.Id)
+            .Should()
             .Equal(first.Select(monsterType => monsterType.Id));
     }
 
@@ -44,16 +48,19 @@ public class MonsterTypeCatalogTests
             await catalog.GetAllAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        InvalidMonsterTypeCatalogException exception =
-            (await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()).Which;
-        exception.Errors.Keys.Should().Contain([
-            "monsterTypes[1].Id",
-            "monsterTypes[1].Name",
-            "monsterTypes[1].BaseHealth",
-            "monsterTypes[1].BaseAttack",
-            "monsterTypes[1].BaseDefense",
-            "monsterTypes[1].BaseSpeed"
-        ]);
+        InvalidMonsterTypeCatalogException exception = (
+            await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()
+        ).Which;
+        exception
+            .Errors.Keys.Should()
+            .Contain([
+                "monsterTypes[1].Id",
+                "monsterTypes[1].Name",
+                "monsterTypes[1].BaseHealth",
+                "monsterTypes[1].BaseAttack",
+                "monsterTypes[1].BaseDefense",
+                "monsterTypes[1].BaseSpeed",
+            ]);
     }
 
     [Fact]
@@ -63,7 +70,7 @@ public class MonsterTypeCatalogTests
         Guid duplicateId = Guid.NewGuid();
         var catalog = CreateCatalog([
             CreateDefinition(duplicateId, "First"),
-            CreateDefinition(duplicateId, "Second")
+            CreateDefinition(duplicateId, "Second"),
         ]);
 
         // Act
@@ -71,10 +78,15 @@ public class MonsterTypeCatalogTests
             await catalog.GetAllAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        InvalidMonsterTypeCatalogException exception =
-            (await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()).Which;
-        exception.Errors["monsterTypes"].Should().ContainSingle()
-            .Which.Should().Contain(duplicateId.ToString());
+        InvalidMonsterTypeCatalogException exception = (
+            await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()
+        ).Which;
+        exception
+            .Errors["monsterTypes"]
+            .Should()
+            .ContainSingle()
+            .Which.Should()
+            .Contain(duplicateId.ToString());
     }
 
     [Fact]
@@ -88,10 +100,15 @@ public class MonsterTypeCatalogTests
             await catalog.GetAllAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        InvalidMonsterTypeCatalogException exception =
-            (await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()).Which;
-        exception.Errors["monsterTypes"].Should().ContainSingle()
-            .Which.Should().Contain("at least one monster type");
+        InvalidMonsterTypeCatalogException exception = (
+            await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()
+        ).Which;
+        exception
+            .Errors["monsterTypes"]
+            .Should()
+            .ContainSingle()
+            .Which.Should()
+            .Contain("at least one monster type");
     }
 
     [Fact]
@@ -105,10 +122,15 @@ public class MonsterTypeCatalogTests
             await catalog.GetAllAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        InvalidMonsterTypeCatalogException exception =
-            (await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()).Which;
-        exception.Errors["monsterTypes[0]"].Should().ContainSingle()
-            .Which.Should().Be("Monster type definition is required.");
+        InvalidMonsterTypeCatalogException exception = (
+            await act.Should().ThrowAsync<InvalidMonsterTypeCatalogException>()
+        ).Which;
+        exception
+            .Errors["monsterTypes[0]"]
+            .Should()
+            .ContainSingle()
+            .Which.Should()
+            .Be("Monster type definition is required.");
     }
 
     [Fact]
@@ -122,7 +144,8 @@ public class MonsterTypeCatalogTests
         // Act
         IReadOnlyList<MonsterTypeDefinition> resolved = await catalog.ResolveRequiredAsync(
             [second.Id, first.Id],
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         resolved.Should().Equal(second, first);
@@ -138,30 +161,34 @@ public class MonsterTypeCatalogTests
         var catalog = CreateCatalog([first, second]);
 
         // Act
-        Func<Task> act = async () => await catalog.ResolveRequiredAsync(
-            [first.Id, unknownId, second.Id],
-            TestContext.Current.CancellationToken);
+        Func<Task> act = async () =>
+            await catalog.ResolveRequiredAsync(
+                [first.Id, unknownId, second.Id],
+                TestContext.Current.CancellationToken
+            );
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage($"*{unknownId}*");
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage($"*{unknownId}*");
     }
 
     [Theory]
     [MemberData(nameof(InvalidSelections))]
-    public async Task ResolveRequiredAsync_InvalidIds_ThrowsValidationException(Guid[] monsterTypeIds)
+    public async Task ResolveRequiredAsync_InvalidIds_ThrowsValidationException(
+        Guid[] monsterTypeIds
+    )
     {
         // Arrange
         var catalog = CreateCatalog([CreateDefinition(Guid.NewGuid(), "Known")]);
 
         // Act
-        Func<Task> act = async () => await catalog.ResolveRequiredAsync(
-            monsterTypeIds,
-            TestContext.Current.CancellationToken);
+        Func<Task> act = async () =>
+            await catalog.ResolveRequiredAsync(
+                monsterTypeIds,
+                TestContext.Current.CancellationToken
+            );
 
         // Assert
-        await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*MonsterTypeIds*");
+        await act.Should().ThrowAsync<ValidationException>().WithMessage("*MonsterTypeIds*");
     }
 
     [Fact]
@@ -186,7 +213,7 @@ public class MonsterTypeCatalogTests
             return new TheoryData<Guid[]>
             {
                 new[] { Guid.Empty },
-                new[] { duplicateId, duplicateId }
+                new[] { duplicateId, duplicateId },
             };
         }
     }
@@ -201,11 +228,13 @@ public class MonsterTypeCatalogTests
         return new MonsterTypeDefinition(id, name, false, 25, 8, 3, 6);
     }
 
-    private sealed class StubMonsterTypeSource(IReadOnlyCollection<MonsterTypeDefinition> definitions)
-        : IMonsterTypeSource
+    private sealed class StubMonsterTypeSource(
+        IReadOnlyCollection<MonsterTypeDefinition> definitions
+    ) : IMonsterTypeSource
     {
         public Task<IReadOnlyCollection<MonsterTypeDefinition>> GetAllAsync(
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             return Task.FromResult(definitions);
         }

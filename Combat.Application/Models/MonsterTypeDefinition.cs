@@ -7,4 +7,5 @@ public sealed record MonsterTypeDefinition(
     int BaseHealth,
     int BaseAttack,
     int BaseDefense,
-    int BaseSpeed);
+    int BaseSpeed
+);

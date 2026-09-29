@@ -16,16 +16,16 @@ public class MonsterTypeMockActivationTests
     public void IsEnabled_EnvironmentAndConfiguration_ReturnsExpectedResult(
         string environmentName,
         string configuredValue,
-        bool expected)
+        bool expected
+    )
     {
         // Arrange
         var environment = new Mock<IHostEnvironment>();
         environment.SetupGet(value => value.EnvironmentName).Returns(environmentName);
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["MonsterTypeMock:Enabled"] = configuredValue
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?> { ["MonsterTypeMock:Enabled"] = configuredValue }
+            )
             .Build();
 
         // Act

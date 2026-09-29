@@ -15,7 +15,9 @@ public class GetHeroCombatDataValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(error => error.PropertyName == nameof(GetHeroCombatDataQuery.HeroId));
+        result
+            .Errors.Should()
+            .ContainSingle(error => error.PropertyName == nameof(GetHeroCombatDataQuery.HeroId));
     }
 
     [Fact]
