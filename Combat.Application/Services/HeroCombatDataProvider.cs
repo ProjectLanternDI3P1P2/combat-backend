@@ -8,7 +8,8 @@ namespace Combat.Application.Services;
 public sealed class HeroCombatDataProvider(
     IHeroSnapshotClient heroSnapshotClient,
     ICombatInventoryClient combatInventoryClient,
-    ILogger logger) : IHeroCombatDataProvider
+    ILogger logger
+) : IHeroCombatDataProvider
 {
     public async Task<HeroCombatData> GetAsync(Guid heroId, CancellationToken cancellationToken)
     {
@@ -20,8 +21,12 @@ public sealed class HeroCombatDataProvider(
         try
         {
             // Player and Rewards are independent dependencies: query them concurrently.
-            Task<HeroCombatSnapshot> heroTask = heroSnapshotClient.GetCombatantSnapshotAsync(heroId, cancellationToken);
-            Task<CombatInventorySnapshot> inventoryTask = combatInventoryClient.GetCombatInventorySnapshotAsync(heroId, cancellationToken);
+            Task<HeroCombatSnapshot> heroTask = heroSnapshotClient.GetCombatantSnapshotAsync(
+                heroId,
+                cancellationToken
+            );
+            Task<CombatInventorySnapshot> inventoryTask =
+                combatInventoryClient.GetCombatInventorySnapshotAsync(heroId, cancellationToken);
 
             await Task.WhenAll(heroTask, inventoryTask);
 
@@ -30,7 +35,11 @@ public sealed class HeroCombatDataProvider(
         }
         catch (HeroNotFoundException exception)
         {
-            logger.Warning(exception, "Combat data retrieval failed: hero {HeroId} was not found.", heroId);
+            logger.Warning(
+                exception,
+                "Combat data retrieval failed: hero {HeroId} was not found.",
+                heroId
+            );
             throw;
         }
         catch (ExternalServiceUnavailableException exception)
@@ -39,15 +48,12 @@ public sealed class HeroCombatDataProvider(
                 exception,
                 "Combat data retrieval failed for hero {HeroId}: {ServiceName} service unavailable.",
                 heroId,
-                exception.ServiceName);
+                exception.ServiceName
+            );
             throw;
         }
 
-        HeroCombatData data = new()
-        {
-            Hero = hero,
-            Inventory = inventory
-        };
+        HeroCombatData data = new() { Hero = hero, Inventory = inventory };
 
         EnsureUsable(heroId, data);
 
@@ -60,7 +66,8 @@ public sealed class HeroCombatDataProvider(
             data.Hero.MaxMana,
             data.Hero.Abilities.Count,
             data.Inventory.Items.Count,
-            data.IsMocked);
+            data.IsMocked
+        );
 
         return data;
     }

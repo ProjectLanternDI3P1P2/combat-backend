@@ -23,22 +23,45 @@ public class HeroFighterFactoryTests
                 MaxHp = 85,
                 CurrentMana = 10,
                 MaxMana = 40,
-                Stats = new HeroCombatStats { Attack = 14, Defense = 7, Speed = 14 },
+                Stats = new HeroCombatStats
+                {
+                    Attack = 14,
+                    Defense = 7,
+                    Speed = 14,
+                },
                 Abilities =
                 [
-                    new HeroAbility { AbilityId = Guid.NewGuid(), Name = "Backstab", ManaCost = 10, TargetType = "SingleEnemy" },
-                    new HeroAbility { AbilityId = Guid.NewGuid(), Name = "Vanish", ManaCost = 0, TargetType = "Self" }
+                    new HeroAbility
+                    {
+                        AbilityId = Guid.NewGuid(),
+                        Name = "Backstab",
+                        ManaCost = 10,
+                        TargetType = "SingleEnemy",
+                    },
+                    new HeroAbility
+                    {
+                        AbilityId = Guid.NewGuid(),
+                        Name = "Vanish",
+                        ManaCost = 0,
+                        TargetType = "Self",
+                    },
                 ],
-                IsMocked = isMocked
+                IsMocked = isMocked,
             },
             Inventory = new CombatInventorySnapshot
             {
                 HeroId = heroId,
                 Items =
                 [
-                    new CombatInventoryItem { ItemId = Guid.NewGuid(), Name = "Health Potion", Category = "Consumable", Quantity = 2 }
-                ]
-            }
+                    new CombatInventoryItem
+                    {
+                        ItemId = Guid.NewGuid(),
+                        Name = "Health Potion",
+                        Category = "Consumable",
+                        Quantity = 2,
+                    },
+                ],
+            },
         };
     }
 
@@ -59,11 +82,18 @@ public class HeroFighterFactoryTests
         fighter.Name.Should().Be(hero.Name);
         fighter.Level.Should().Be(hero.Level);
 
-        foreach (var (currentHp, maxHp, currentMana, maxMana) in new[]
-        {
-            (fighter.InitialState.CurrentHp, fighter.InitialState.MaxHp, fighter.InitialState.CurrentMana, fighter.InitialState.MaxMana),
-            (fighter.CurrentHp, fighter.MaxHp, fighter.CurrentMana, fighter.MaxMana)
-        })
+        foreach (
+            var (currentHp, maxHp, currentMana, maxMana) in new[]
+            {
+                (
+                    fighter.InitialState.CurrentHp,
+                    fighter.InitialState.MaxHp,
+                    fighter.InitialState.CurrentMana,
+                    fighter.InitialState.MaxMana
+                ),
+                (fighter.CurrentHp, fighter.MaxHp, fighter.CurrentMana, fighter.MaxMana),
+            }
+        )
         {
             currentHp.Should().Be(hero.CurrentHp);
             maxHp.Should().Be(hero.MaxHp);
@@ -75,8 +105,12 @@ public class HeroFighterFactoryTests
         fighter.Stats.Defense.Should().Be(hero.Stats.Defense);
         fighter.Stats.Speed.Should().Be(hero.Stats.Speed);
 
-        fighter.Abilities.Should().BeEquivalentTo(hero.Abilities, options => options.WithStrictOrdering());
-        fighter.Items.Should().BeEquivalentTo(data.Inventory.Items, options => options.WithStrictOrdering());
+        fighter
+            .Abilities.Should()
+            .BeEquivalentTo(hero.Abilities, options => options.WithStrictOrdering());
+        fighter
+            .Items.Should()
+            .BeEquivalentTo(data.Inventory.Items, options => options.WithStrictOrdering());
         fighter.IsFromMockedData.Should().BeFalse();
     }
 

@@ -23,12 +23,15 @@ public static class HeroFighterFactory
                 ability.AbilityId,
                 ability.Name,
                 ability.ManaCost,
-                ability.TargetType)),
+                ability.TargetType
+            )),
             data.Inventory.Items.Select(item => new FighterItem(
                 item.ItemId,
                 item.Name,
                 item.Category,
-                item.Quantity)));
+                item.Quantity
+            ))
+        );
 
         return Fighter.CreateHero(hero.HeroId, hero.Name, hero.Level, initialState, data.IsMocked);
     }

@@ -20,7 +20,8 @@ public class MockHeroSnapshotClientTests
         // Act
         HeroCombatSnapshot hero = await _client.GetCombatantSnapshotAsync(
             MockHeroCatalog.WarriorHeroId,
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         hero.HeroId.Should().Be(MockHeroCatalog.WarriorHeroId);
@@ -32,16 +33,22 @@ public class MockHeroSnapshotClientTests
     public async Task GetCombatantSnapshotAsync_UnknownHero_ThrowsHeroNotFoundException()
     {
         // Act
-        Func<Task> act = () => _client.GetCombatantSnapshotAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            _client.GetCombatantSnapshotAsync(
+                Guid.NewGuid(),
+                TestContext.Current.CancellationToken
+            );
 
         // Assert
         await act.Should().ThrowAsync<HeroNotFoundException>();
     }
 
-    public static TheoryData<Guid> MockedHeroIds() => new(
-        MockHeroCatalog.WarriorHeroId,
-        MockHeroCatalog.MageHeroId,
-        MockHeroCatalog.WoundedRogueHeroId);
+    public static TheoryData<Guid> MockedHeroIds() =>
+        new(
+            MockHeroCatalog.WarriorHeroId,
+            MockHeroCatalog.MageHeroId,
+            MockHeroCatalog.WoundedRogueHeroId
+        );
 
     // Mocks must go through the same validation as real service data.
     [Theory]
@@ -55,7 +62,10 @@ public class MockHeroSnapshotClientTests
         var provider = new HeroCombatDataProvider(heroClient, inventoryClient, logger);
 
         // Act
-        HeroCombatData data = await provider.GetAsync(heroId, TestContext.Current.CancellationToken);
+        HeroCombatData data = await provider.GetAsync(
+            heroId,
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         data.HeroId.Should().Be(heroId);

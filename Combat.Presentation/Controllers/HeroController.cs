@@ -14,7 +14,10 @@ public sealed class HeroController(IMediator mediator, ILogger logger) : Control
     {
         logger.Information("Received request to get combat data for hero {HeroId}.", heroId);
 
-        var heroCombatData = await mediator.Send(new GetHeroCombatDataQuery(heroId), cancellationToken);
+        var heroCombatData = await mediator.Send(
+            new GetHeroCombatDataQuery(heroId),
+            cancellationToken
+        );
 
         return Ok(heroCombatData);
     }

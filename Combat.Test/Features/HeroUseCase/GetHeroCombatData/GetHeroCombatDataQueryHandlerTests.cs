@@ -33,10 +33,15 @@ public class GetHeroCombatDataQueryHandlerTests
                 MaxHp = 10,
                 CurrentMana = 0,
                 MaxMana = 0,
-                Stats = new HeroCombatStats { Attack = 1, Defense = 1, Speed = 1 },
-                Abilities = []
+                Stats = new HeroCombatStats
+                {
+                    Attack = 1,
+                    Defense = 1,
+                    Speed = 1,
+                },
+                Abilities = [],
             },
-            Inventory = new CombatInventorySnapshot { HeroId = heroId, Items = [] }
+            Inventory = new CombatInventorySnapshot { HeroId = heroId, Items = [] },
         };
 
         _providerMock
@@ -44,7 +49,10 @@ public class GetHeroCombatDataQueryHandlerTests
             .ReturnsAsync(data);
 
         // Act
-        HeroCombatData result = await _handler.Handle(new GetHeroCombatDataQuery(heroId), TestContext.Current.CancellationToken);
+        HeroCombatData result = await _handler.Handle(
+            new GetHeroCombatDataQuery(heroId),
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         result.Should().Be(data);
@@ -60,7 +68,11 @@ public class GetHeroCombatDataQueryHandlerTests
             .ThrowsAsync(new HeroNotFoundException(heroId));
 
         // Act
-        Func<Task> act = () => _handler.Handle(new GetHeroCombatDataQuery(heroId), TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            _handler.Handle(
+                new GetHeroCombatDataQuery(heroId),
+                TestContext.Current.CancellationToken
+            );
 
         // Assert
         await act.Should().ThrowAsync<HeroNotFoundException>();

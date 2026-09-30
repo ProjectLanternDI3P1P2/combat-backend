@@ -9,15 +9,18 @@ namespace Combat.Infrastructure.ExternalServices;
 
 public static class ExternalServicesRegistration
 {
-    public static IServiceCollection AddExternalServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddExternalServices(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
     {
-        PlayerServiceOptions playerOptions = configuration
-            .GetSection(PlayerServiceOptions.SectionName)
-            .Get<PlayerServiceOptions>() ?? new PlayerServiceOptions();
+        PlayerServiceOptions playerOptions =
+            configuration.GetSection(PlayerServiceOptions.SectionName).Get<PlayerServiceOptions>()
+            ?? new PlayerServiceOptions();
 
-        RewardsServiceOptions rewardsOptions = configuration
-            .GetSection(RewardsServiceOptions.SectionName)
-            .Get<RewardsServiceOptions>() ?? new RewardsServiceOptions();
+        RewardsServiceOptions rewardsOptions =
+            configuration.GetSection(RewardsServiceOptions.SectionName).Get<RewardsServiceOptions>()
+            ?? new RewardsServiceOptions();
 
         services
             .AddSingleton(Options.Create(playerOptions))
@@ -28,29 +31,43 @@ public static class ExternalServicesRegistration
         // Player and Rewards have not published their contracts yet: the mocks are the only source.
         // Once a real gRPC client exists, replace the matching line with
         // AddHeroSnapshotClientWithMockFallback<TRealClient>() or AddCombatInventoryClientWithMockFallback<TRealClient>().
-        services.AddScoped<IHeroSnapshotClient>(provider => provider.GetRequiredService<MockHeroSnapshotClient>());
-        services.AddScoped<ICombatInventoryClient>(provider => provider.GetRequiredService<MockCombatInventoryClient>());
+        services.AddScoped<IHeroSnapshotClient>(provider =>
+            provider.GetRequiredService<MockHeroSnapshotClient>()
+        );
+        services.AddScoped<ICombatInventoryClient>(provider =>
+            provider.GetRequiredService<MockCombatInventoryClient>()
+        );
 
         return services;
     }
 
-    public static IServiceCollection AddHeroSnapshotClientWithMockFallback<TRealClient>(this IServiceCollection services)
+    public static IServiceCollection AddHeroSnapshotClientWithMockFallback<TRealClient>(
+        this IServiceCollection services
+    )
         where TRealClient : class, IHeroSnapshotClient
     {
         return services
             .AddScoped<TRealClient>()
-            .AddScoped<IHeroSnapshotClient>(provider => ActivatorUtilities.CreateInstance<FallbackHeroSnapshotClient>(
-                provider,
-                provider.GetRequiredService<TRealClient>()));
+            .AddScoped<IHeroSnapshotClient>(provider =>
+                ActivatorUtilities.CreateInstance<FallbackHeroSnapshotClient>(
+                    provider,
+                    provider.GetRequiredService<TRealClient>()
+                )
+            );
     }
 
-    public static IServiceCollection AddCombatInventoryClientWithMockFallback<TRealClient>(this IServiceCollection services)
+    public static IServiceCollection AddCombatInventoryClientWithMockFallback<TRealClient>(
+        this IServiceCollection services
+    )
         where TRealClient : class, ICombatInventoryClient
     {
         return services
             .AddScoped<TRealClient>()
-            .AddScoped<ICombatInventoryClient>(provider => ActivatorUtilities.CreateInstance<FallbackCombatInventoryClient>(
-                provider,
-                provider.GetRequiredService<TRealClient>()));
+            .AddScoped<ICombatInventoryClient>(provider =>
+                ActivatorUtilities.CreateInstance<FallbackCombatInventoryClient>(
+                    provider,
+                    provider.GetRequiredService<TRealClient>()
+                )
+            );
     }
 }

@@ -6,7 +6,8 @@ namespace Combat.Application.Services;
 
 public sealed class HeroFighterInitializer(
     IHeroCombatDataProvider heroCombatDataProvider,
-    ILogger logger) : IHeroFighterInitializer
+    ILogger logger
+) : IHeroFighterInitializer
 {
     public async Task<Fighter> InitializeAsync(Guid heroId, CancellationToken cancellationToken)
     {
@@ -24,7 +25,8 @@ public sealed class HeroFighterInitializer(
             fighter.MaxMana,
             fighter.Abilities.Count,
             fighter.Items.Count,
-            fighter.IsFromMockedData);
+            fighter.IsFromMockedData
+        );
 
         return fighter;
     }

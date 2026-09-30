@@ -1,7 +1,9 @@
+using Combat.Application.Ports;
 using Combat.Domain.Services;
 using Combat.Infrastructure.ExternalServices;
 using Combat.Infrastructure.Grpc;
 using Combat.Infrastructure.Messaging;
+using Combat.Infrastructure.MonsterMocks;
 using Combat.Infrastructure.Persistence;
 using Combat.Infrastructure.PipelineBehavior;
 using Combat.Infrastructure.Services;
@@ -16,13 +18,17 @@ namespace Combat.Infrastructure;
 
 public static class InfrastructureServiceRegistration
 {
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool enableMonsterTypeMocks = false
+    )
     {
-        DatabaseOptions databaseOptions = configuration
-            .GetSection(DatabaseOptions.SectionName)
-            .Get<DatabaseOptions>() ?? new DatabaseOptions();
+        DatabaseOptions databaseOptions =
+            configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
+            ?? new DatabaseOptions();
 
-        return services
+        services
             .AddSingleton(Options.Create(databaseOptions))
             .AddSingleton<IClock, SystemClock>()
             .AddTransient(typeof(IPipelineBehavior<,>), typeof(CommandTransactionBehavior<,>))
@@ -31,32 +37,51 @@ public static class InfrastructureServiceRegistration
             .AddGrpcConfiguration(configuration)
             .AddExternalServices(configuration)
             .AddMessaging(configuration);
+
+        if (enableMonsterTypeMocks)
+        {
+            services.AddSingleton<IMonsterTypeSource, MockMonsterTypeSource>();
+        }
+        else
+        {
+            services.AddSingleton<IMonsterTypeSource, UnavailableMonsterTypeSource>();
+        }
+
+        return services;
     }
 
     private static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        return services.Scan(scan => scan
-            .FromAssembliesOf(typeof(InfrastructureServiceRegistration))
-            .AddClasses(classes => classes.Where(c => c.Name.EndsWith("Repository")))
-            .AsImplementedInterfaces()
-            .WithScopedLifetime());
+        return services.Scan(scan =>
+            scan.FromAssembliesOf(typeof(InfrastructureServiceRegistration))
+                .AddClasses(classes => classes.Where(c => c.Name.EndsWith("Repository")))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+        );
     }
 
     private static IServiceCollection AddEfConnection(this IServiceCollection services)
     {
-        return services.AddDbContext<CombatDbContext>((serviceProvider, options) =>
-        {
-            DatabaseOptions databaseOptions = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            string connectionString = GetConnectionString(databaseOptions);
+        return services.AddDbContext<CombatDbContext>(
+            (serviceProvider, options) =>
+            {
+                DatabaseOptions databaseOptions = serviceProvider
+                    .GetRequiredService<IOptions<DatabaseOptions>>()
+                    .Value;
+                string connectionString = GetConnectionString(databaseOptions);
 
-            options.UseNpgsql(connectionString);
-        });
+                options.UseNpgsql(connectionString);
+            }
+        );
     }
 
     private static string GetConnectionString(DatabaseOptions databaseOptions)
     {
-        string connectionString = databaseOptions.DefaultConnection ??
-            throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing in the configuration.");
+        string connectionString =
+            databaseOptions.DefaultConnection
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is missing in the configuration."
+            );
 
         if (string.IsNullOrWhiteSpace(databaseOptions.PasswordFile))
         {
@@ -65,21 +90,24 @@ public static class InfrastructureServiceRegistration
 
         if (!File.Exists(databaseOptions.PasswordFile))
         {
-            throw new InvalidOperationException($"The database password file '{databaseOptions.PasswordFile}' does not exist.");
+            throw new InvalidOperationException(
+                $"The database password file '{databaseOptions.PasswordFile}' does not exist."
+            );
         }
 
         string password = File.ReadAllText(databaseOptions.PasswordFile).TrimEnd('\r', '\n');
         if (string.IsNullOrEmpty(password))
         {
-            throw new InvalidOperationException($"The database password file '{databaseOptions.PasswordFile}' is empty.");
+            throw new InvalidOperationException(
+                $"The database password file '{databaseOptions.PasswordFile}' is empty."
+            );
         }
 
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
         {
-            Password = password
+            Password = password,
         };
 
         return connectionStringBuilder.ConnectionString;
     }
-
 }

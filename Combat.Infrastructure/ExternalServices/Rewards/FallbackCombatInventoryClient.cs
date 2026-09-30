@@ -11,20 +11,26 @@ public sealed class FallbackCombatInventoryClient(
     ICombatInventoryClient realClient,
     MockCombatInventoryClient mockClient,
     IOptions<RewardsServiceOptions> options,
-    ILogger logger) : ICombatInventoryClient
+    ILogger logger
+) : ICombatInventoryClient
 {
-    public async Task<CombatInventorySnapshot> GetCombatInventorySnapshotAsync(Guid heroId, CancellationToken cancellationToken)
+    public async Task<CombatInventorySnapshot> GetCombatInventorySnapshotAsync(
+        Guid heroId,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
             return await realClient.GetCombatInventorySnapshotAsync(heroId, cancellationToken);
         }
-        catch (ExternalServiceUnavailableException exception) when (options.Value.IsMockFallbackEnabled)
+        catch (ExternalServiceUnavailableException exception)
+            when (options.Value.IsMockFallbackEnabled)
         {
             logger.Warning(
                 exception,
                 "Rewards service unavailable, falling back to mocked combat inventory for hero {HeroId}.",
-                heroId);
+                heroId
+            );
 
             return await mockClient.GetCombatInventorySnapshotAsync(heroId, cancellationToken);
         }

@@ -10,28 +10,35 @@ public static class MockCombatInventoryCatalog
     {
         [MockHeroCatalog.WarriorHeroId] =
         [
-            Item("b0000000-0000-0000-0000-000000000001", "Health Potion", "Consumable", 2)
+            Item("b0000000-0000-0000-0000-000000000001", "Health Potion", "Consumable", 2),
         ],
         [MockHeroCatalog.MageHeroId] =
         [
             Item("b0000000-0000-0000-0000-000000000001", "Health Potion", "Consumable", 1),
-            Item("b0000000-0000-0000-0000-000000000002", "Mana Potion", "Consumable", 3)
-        ]
+            Item("b0000000-0000-0000-0000-000000000002", "Mana Potion", "Consumable", 3),
+        ],
     };
 
     // Rewards does not own heroes: an unknown hero simply has nothing usable in combat.
-    public static CombatInventorySnapshot Get(Guid heroId) => new()
-    {
-        HeroId = heroId,
-        Items = Items.GetValueOrDefault(heroId) ?? [],
-        IsMocked = true
-    };
+    public static CombatInventorySnapshot Get(Guid heroId) =>
+        new()
+        {
+            HeroId = heroId,
+            Items = Items.GetValueOrDefault(heroId) ?? [],
+            IsMocked = true,
+        };
 
-    private static CombatInventoryItem Item(string itemId, string name, string category, int quantity) => new()
-    {
-        ItemId = Guid.Parse(itemId),
-        Name = name,
-        Category = category,
-        Quantity = quantity
-    };
+    private static CombatInventoryItem Item(
+        string itemId,
+        string name,
+        string category,
+        int quantity
+    ) =>
+        new()
+        {
+            ItemId = Guid.Parse(itemId),
+            Name = name,
+            Category = category,
+            Quantity = quantity,
+        };
 }

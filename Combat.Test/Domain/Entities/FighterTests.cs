@@ -10,7 +10,13 @@ public class FighterTests
 {
     private static readonly Guid PotionId = Guid.Parse("b0000000-0000-0000-0000-000000000001");
 
-    private static Fighter CreateFighter(int currentHp = 50, int maxHp = 100, int currentMana = 20, int maxMana = 40, int potions = 1)
+    private static Fighter CreateFighter(
+        int currentHp = 50,
+        int maxHp = 100,
+        int currentMana = 20,
+        int maxMana = 40,
+        int potions = 1
+    )
     {
         var initialState = new FighterInitialState(
             currentHp,
@@ -19,9 +25,16 @@ public class FighterTests
             maxMana,
             new FighterStats(10, 5, 7),
             [new FighterAbility(Guid.NewGuid(), "Strike", 5, "SingleEnemy")],
-            [new FighterItem(PotionId, "Health Potion", "Consumable", potions)]);
+            [new FighterItem(PotionId, "Health Potion", "Consumable", potions)]
+        );
 
-        return Fighter.CreateHero(Guid.NewGuid(), "Test Hero", 1, initialState, isFromMockedData: false);
+        return Fighter.CreateHero(
+            Guid.NewGuid(),
+            "Test Hero",
+            1,
+            initialState,
+            isFromMockedData: false
+        );
     }
 
     [Fact]
@@ -181,16 +194,20 @@ public class FighterTests
         Action act = () => fighter.ConsumeItem(Guid.NewGuid());
 
         // Assert
-        act.Should().Throw<InvalidFighterOperationException>().WithMessage("*not in the combat inventory*");
+        act.Should()
+            .Throw<InvalidFighterOperationException>()
+            .WithMessage("*not in the combat inventory*");
     }
 
-    public static TheoryData<Action<Fighter>> Operations() => new(
-        fighter => fighter.TakeDamage(1),
-        fighter => fighter.Heal(1),
-        fighter => fighter.SpendMana(1),
-        fighter => fighter.RestoreMana(1),
-        fighter => fighter.ChangeStats(new FighterStats(1, 1, 1)),
-        fighter => fighter.ConsumeItem(PotionId));
+    public static TheoryData<Action<Fighter>> Operations() =>
+        new(
+            fighter => fighter.TakeDamage(1),
+            fighter => fighter.Heal(1),
+            fighter => fighter.SpendMana(1),
+            fighter => fighter.RestoreMana(1),
+            fighter => fighter.ChangeStats(new FighterStats(1, 1, 1)),
+            fighter => fighter.ConsumeItem(PotionId)
+        );
 
     [Theory]
     [MemberData(nameof(Operations))]
@@ -221,11 +238,13 @@ public class FighterTests
             () => ((IList<FighterItem>)fighter.Items).Add(extraItem),
             () => ((IList<FighterItem>)fighter.InitialState.Items).Add(extraItem),
             () => ((IList<FighterAbility>)fighter.Abilities).Add(extraAbility),
-            () => ((IList<FighterAbility>)fighter.InitialState.Abilities).Add(extraAbility)
+            () => ((IList<FighterAbility>)fighter.InitialState.Abilities).Add(extraAbility),
         ];
 
         // Assert
-        mutations.Should().AllSatisfy(mutation => mutation.Should().Throw<NotSupportedException>());
+        mutations
+            .Should()
+            .AllSatisfy(mutation => mutation.Should().Throw<NotSupportedException>());
         fighter.Items.Should().ContainSingle();
         fighter.InitialState.Abilities.Should().ContainSingle();
     }
@@ -235,7 +254,15 @@ public class FighterTests
     {
         // Arrange
         List<FighterItem> items = [new FighterItem(PotionId, "Health Potion", "Consumable", 1)];
-        var initialState = new FighterInitialState(10, 10, 0, 0, new FighterStats(1, 1, 1), [], items);
+        var initialState = new FighterInitialState(
+            10,
+            10,
+            0,
+            0,
+            new FighterStats(1, 1, 1),
+            [],
+            items
+        );
 
         // Act
         items.Clear();
@@ -263,10 +290,24 @@ public class FighterTests
     [InlineData(0, 0, 10, 40)]
     [InlineData(50, 100, 41, 40)]
     [InlineData(50, 100, -1, 40)]
-    public void FighterInitialState_InconsistentValues_ThrowsArgumentOutOfRangeException(int currentHp, int maxHp, int currentMana, int maxMana)
+    public void FighterInitialState_InconsistentValues_ThrowsArgumentOutOfRangeException(
+        int currentHp,
+        int maxHp,
+        int currentMana,
+        int maxMana
+    )
     {
         // Act
-        Action act = () => _ = new FighterInitialState(currentHp, maxHp, currentMana, maxMana, new FighterStats(1, 1, 1), [], []);
+        Action act = () =>
+            _ = new FighterInitialState(
+                currentHp,
+                maxHp,
+                currentMana,
+                maxMana,
+                new FighterStats(1, 1, 1),
+                [],
+                []
+            );
 
         // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();

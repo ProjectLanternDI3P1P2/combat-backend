@@ -13,7 +13,8 @@ public sealed record FighterInitialState
         int maxMana,
         FighterStats stats,
         IEnumerable<FighterAbility> abilities,
-        IEnumerable<FighterItem> items)
+        IEnumerable<FighterItem> items
+    )
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxHp);
         ArgumentOutOfRangeException.ThrowIfNegative(currentHp);

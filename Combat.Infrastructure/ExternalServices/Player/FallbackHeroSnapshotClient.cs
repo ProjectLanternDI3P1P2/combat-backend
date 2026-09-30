@@ -14,20 +14,26 @@ public sealed class FallbackHeroSnapshotClient(
     IHeroSnapshotClient realClient,
     MockHeroSnapshotClient mockClient,
     IOptions<PlayerServiceOptions> options,
-    ILogger logger) : IHeroSnapshotClient
+    ILogger logger
+) : IHeroSnapshotClient
 {
-    public async Task<HeroCombatSnapshot> GetCombatantSnapshotAsync(Guid heroId, CancellationToken cancellationToken)
+    public async Task<HeroCombatSnapshot> GetCombatantSnapshotAsync(
+        Guid heroId,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
             return await realClient.GetCombatantSnapshotAsync(heroId, cancellationToken);
         }
-        catch (ExternalServiceUnavailableException exception) when (options.Value.IsMockFallbackEnabled)
+        catch (ExternalServiceUnavailableException exception)
+            when (options.Value.IsMockFallbackEnabled)
         {
             logger.Warning(
                 exception,
                 "Player service unavailable, falling back to mocked combatant snapshot for hero {HeroId}.",
-                heroId);
+                heroId
+            );
 
             return await mockClient.GetCombatantSnapshotAsync(heroId, cancellationToken);
         }

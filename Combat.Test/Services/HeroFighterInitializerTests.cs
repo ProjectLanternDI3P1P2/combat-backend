@@ -25,7 +25,8 @@ public class HeroFighterInitializerTests
         var initializer = new HeroFighterInitializer(providerMock.Object, _logger);
 
         // Act
-        Func<Task> act = () => initializer.InitializeAsync(heroId, TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            initializer.InitializeAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<ExternalServiceUnavailableException>();
@@ -39,11 +40,15 @@ public class HeroFighterInitializerTests
         var provider = new HeroCombatDataProvider(
             new MockHeroSnapshotClient(_logger),
             new MockCombatInventoryClient(_logger),
-            _logger);
+            _logger
+        );
         var initializer = new HeroFighterInitializer(provider, _logger);
 
         // Act
-        Fighter fighter = await initializer.InitializeAsync(MockHeroCatalog.MageHeroId, TestContext.Current.CancellationToken);
+        Fighter fighter = await initializer.InitializeAsync(
+            MockHeroCatalog.MageHeroId,
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         fighter.ExternalId.Should().Be(MockHeroCatalog.MageHeroId);
@@ -61,11 +66,13 @@ public class HeroFighterInitializerTests
         var provider = new HeroCombatDataProvider(
             new MockHeroSnapshotClient(_logger),
             new MockCombatInventoryClient(_logger),
-            _logger);
+            _logger
+        );
         var initializer = new HeroFighterInitializer(provider, _logger);
 
         // Act
-        Func<Task> act = () => initializer.InitializeAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            initializer.InitializeAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<HeroNotFoundException>();

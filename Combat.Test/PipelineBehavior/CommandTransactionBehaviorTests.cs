@@ -25,12 +25,19 @@ public sealed class CommandTransactionBehaviorTests
                 dbContext.Players.Add(player);
                 return Task.FromResult(Unit.Value);
             },
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         result.Should().Be(Unit.Value);
         await using var verificationContext = CreateInMemoryDbContext(databaseName);
-        (await verificationContext.Players.FindAsync([player.Id], TestContext.Current.CancellationToken))
-            .Should().NotBeNull();
+        (
+            await verificationContext.Players.FindAsync(
+                [player.Id],
+                TestContext.Current.CancellationToken
+            )
+        )
+            .Should()
+            .NotBeNull();
     }
 
     [Fact]
@@ -41,19 +48,29 @@ public sealed class CommandTransactionBehaviorTests
         var behavior = new CommandTransactionBehavior<CreatePlayerCommand, Unit>(dbContext);
         var player = new Player { Id = Guid.NewGuid(), Name = "Not committed" };
 
-        Func<Task> action = async () => await behavior.Handle(
-            new CreatePlayerCommand(player),
-            _ =>
-            {
-                dbContext.Players.Add(player);
-                return Task.FromException<Unit>(new InvalidOperationException("Handler failed."));
-            },
-            TestContext.Current.CancellationToken);
+        Func<Task> action = async () =>
+            await behavior.Handle(
+                new CreatePlayerCommand(player),
+                _ =>
+                {
+                    dbContext.Players.Add(player);
+                    return Task.FromException<Unit>(
+                        new InvalidOperationException("Handler failed.")
+                    );
+                },
+                TestContext.Current.CancellationToken
+            );
 
         await action.Should().ThrowAsync<InvalidOperationException>();
         await using var verificationContext = CreateInMemoryDbContext(databaseName);
-        (await verificationContext.Players.FindAsync([player.Id], TestContext.Current.CancellationToken))
-            .Should().BeNull();
+        (
+            await verificationContext.Players.FindAsync(
+                [player.Id],
+                TestContext.Current.CancellationToken
+            )
+        )
+            .Should()
+            .BeNull();
     }
 
     private static CombatDbContext CreateInMemoryDbContext(string? databaseName = null)

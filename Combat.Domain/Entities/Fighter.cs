@@ -20,7 +20,8 @@ public sealed class Fighter
         string name,
         int level,
         FighterInitialState initialState,
-        bool isFromMockedData)
+        bool isFromMockedData
+    )
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(level);
         ArgumentNullException.ThrowIfNull(initialState);
@@ -68,9 +69,18 @@ public sealed class Fighter
         string name,
         int level,
         FighterInitialState initialState,
-        bool isFromMockedData)
+        bool isFromMockedData
+    )
     {
-        return new Fighter(Guid.NewGuid(), FighterType.Hero, heroId, name, level, initialState, isFromMockedData);
+        return new Fighter(
+            Guid.NewGuid(),
+            FighterType.Hero,
+            heroId,
+            name,
+            level,
+            initialState,
+            isFromMockedData
+        );
     }
 
     /// <returns>The HP actually lost.</returns>
@@ -142,7 +152,10 @@ public sealed class Fighter
         int index = _items.FindIndex(item => item.ItemId == itemId);
         if (index < 0)
         {
-            throw new InvalidFighterOperationException(FighterId, $"item '{itemId}' is not in the combat inventory.");
+            throw new InvalidFighterOperationException(
+                FighterId,
+                $"item '{itemId}' is not in the combat inventory."
+            );
         }
 
         FighterItem item = _items[index];

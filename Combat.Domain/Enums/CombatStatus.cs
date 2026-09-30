@@ -7,5 +7,5 @@ public enum CombatStatus
     Pending,
     Active,
     Completed,
-    Failed
+    Failed,
 }

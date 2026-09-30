@@ -14,11 +14,15 @@ public class FallbackCombatInventoryClientTests
 {
     private readonly Mock<ICombatInventoryClient> _realClientMock = new();
 
-    private FallbackCombatInventoryClient CreateClient(bool isMockFallbackEnabled = true) => new(
-        _realClientMock.Object,
-        new MockCombatInventoryClient(new Mock<ILogger>().Object),
-        Options.Create(new RewardsServiceOptions { IsMockFallbackEnabled = isMockFallbackEnabled }),
-        new Mock<ILogger>().Object);
+    private FallbackCombatInventoryClient CreateClient(bool isMockFallbackEnabled = true) =>
+        new(
+            _realClientMock.Object,
+            new MockCombatInventoryClient(new Mock<ILogger>().Object),
+            Options.Create(
+                new RewardsServiceOptions { IsMockFallbackEnabled = isMockFallbackEnabled }
+            ),
+            new Mock<ILogger>().Object
+        );
 
     [Fact]
     public async Task GetCombatInventorySnapshotAsync_RealServiceUnavailable_ReturnsMockedData()
@@ -26,7 +30,9 @@ public class FallbackCombatInventoryClientTests
         // Arrange
         Guid heroId = MockHeroCatalog.MageHeroId;
         _realClientMock
-            .Setup(client => client.GetCombatInventorySnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatInventorySnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ThrowsAsync(new ExternalServiceUnavailableException("Rewards"));
 
         // Act
@@ -45,12 +51,15 @@ public class FallbackCombatInventoryClientTests
         // Arrange
         Guid heroId = MockHeroCatalog.MageHeroId;
         _realClientMock
-            .Setup(client => client.GetCombatInventorySnapshotAsync(heroId, It.IsAny<CancellationToken>()))
+            .Setup(client =>
+                client.GetCombatInventorySnapshotAsync(heroId, It.IsAny<CancellationToken>())
+            )
             .ThrowsAsync(new ExternalServiceUnavailableException("Rewards"));
 
         // Act
-        Func<Task> act = () => CreateClient(isMockFallbackEnabled: false)
-            .GetCombatInventorySnapshotAsync(heroId, TestContext.Current.CancellationToken);
+        Func<Task> act = () =>
+            CreateClient(isMockFallbackEnabled: false)
+                .GetCombatInventorySnapshotAsync(heroId, TestContext.Current.CancellationToken);
 
         // Assert
         await act.Should().ThrowAsync<ExternalServiceUnavailableException>();
