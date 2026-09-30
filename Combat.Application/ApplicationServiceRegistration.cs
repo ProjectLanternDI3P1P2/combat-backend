@@ -16,7 +16,8 @@ public static class ApplicationServiceRegistration
             .AddScoped<IMonsterTypeCatalog, MonsterTypeCatalog>()
             .ConfigureMediatR()
             .ConfigureFluentValidation()
-            .AddScoped<IHeroCombatDataProvider, HeroCombatDataProvider>();
+            .AddScoped<IHeroCombatDataProvider, HeroCombatDataProvider>()
+            .AddScoped<IHeroFighterInitializer, HeroFighterInitializer>();
     }
 
     private static IServiceCollection ConfigureMediatR(this IServiceCollection services)

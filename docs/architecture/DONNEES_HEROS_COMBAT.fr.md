@@ -52,3 +52,27 @@ Le mock ne sert alors plus que de secours lorsque le service est **indisponible*
 Un « héros introuvable » renvoyé par Player n'est jamais remplacé par un mock.
 Le secours se désactive avec `ExternalServices:Player:IsMockFallbackEnabled = false`
 (idem `ExternalServices:Rewards`).
+
+## État temporaire du héros (US2)
+
+`IHeroFighterInitializer.InitializeAsync(heroId)` récupère les données
+ci-dessus puis crée un `Fighter` (Domain) via `HeroFighterFactory` (mapping
+manuel). Toute exception empêche le démarrage du combat.
+
+Le `Fighter` est une copie locale au combat : il ne modifie jamais les données
+de Player ou Rewards. Il porte :
+
+- un `FighterId` propre au combat et l'`ExternalId` du héros chez Player ;
+- un `InitialState` immuable, identique aux données reçues (PV, mana, stats,
+  capacités, inventaire) ;
+- un état courant modifiable : `TakeDamage`, `Heal`, `SpendMana`,
+  `RestoreMana`, `ChangeStats`, `ConsumeItem` ;
+- `IsFromMockedData` lorsque les données viennent des mocks.
+
+Invariants : PV et mana restent entre 0 et leur maximum ; à 0 PV, le fighter
+passe `KnockedOut` et toute opération est refusée
+(`InvalidFighterOperationException`, HTTP 409 / gRPC `FailedPrecondition`).
+Un fighter KO ne peut pas être soigné.
+
+Le `Fighter` vit en mémoire : sa persistance viendra avec la création du
+combat (`Fight`).
