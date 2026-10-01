@@ -1,0 +1,64 @@
+name: CD
+
+# Deploys each application release (ADR-0037). release-please pushes vX.Y.Z tags with
+# BOT_TOKEN, so they trigger this workflow; contracts-v* tags do not match.
+# Roll back: Run workflow → "Use workflow from" → an older release tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: cd
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/projectlanterndi3p1p2/combat-backend
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  publish:
+    name: Build and push image
+    # A manual run on a branch would publish an image named after the branch.
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Build and push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$ACTOR" --password-stdin
+          docker build --label "org.opencontainers.image.source=$SOURCE" --tag "$IMAGE:$TAG" .
+          docker push "$IMAGE:$TAG"
+
+  deploy:
+    name: Deploy to Kubernetes
+    needs: publish
+    # The cluster is only reachable from the Proxmox network: this runner lives there
+    # and uses its own kubeconfig. Keep it restricted to this workflow (public repo).
+    runs-on: [self-hosted, lantern-k8s]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Apply manifests
+        run: sed "s/__TAG__/$TAG/g" deploy/kubernetes.yaml | kubectl apply -f -
+
+      - name: Wait for the rollout
+        run: kubectl rollout status deployment/combat-backend -n combat --timeout=5m
