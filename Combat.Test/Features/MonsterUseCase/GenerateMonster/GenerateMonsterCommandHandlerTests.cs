@@ -1,3 +1,4 @@
+using Combat.Application.Exceptions;
 using Combat.Application.Features.MonsterUseCase.GenerateMonster;
 using Combat.Application.Models;
 using Combat.Domain.Entities;
@@ -119,6 +120,40 @@ public sealed class GenerateMonsterCommandHandlerTests
                 repository.GetByClassAsync(It.IsAny<MonsterClass>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
+    }
+
+    [Fact]
+    public async Task Handle_ReusedIdempotencyKeyWithDifferentRequest_ThrowsConflict()
+    {
+        Guid idempotencyKey = Guid.NewGuid();
+        var existingMonster = new Monster
+        {
+            Id = Guid.NewGuid(),
+            DungeonRunId = Guid.NewGuid(),
+            IdempotencyKey = idempotencyKey,
+            Class = MonsterClass.Ordinary,
+            Level = 1,
+            PlayerCount = 1,
+        };
+        _monsterRepository
+            .Setup(repository =>
+                repository.GetByIdempotencyKeyAsync(idempotencyKey, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(existingMonster);
+
+        Func<Task> act = () =>
+            _handler.Handle(
+                new GenerateMonsterCommand(
+                    existingMonster.DungeonRunId,
+                    idempotencyKey,
+                    Floor: 2,
+                    PlayerCount: 1,
+                    MonsterClass: MonsterClass.Ordinary
+                ),
+                CancellationToken.None
+            );
+
+        await act.Should().ThrowAsync<IdempotencyKeyReuseException>();
     }
 
     private static MonsterDefinition CreateDefinition(MonsterClass monsterClass, int baseStat)
