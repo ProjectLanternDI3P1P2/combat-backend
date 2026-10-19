@@ -5,8 +5,8 @@ ARG DOTNET_VERSION=10.0
 # ============================================================
 # 1. RESTORE
 # ============================================================
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS restore
-
+FROM dhi/dotnet:10.0-sdk AS build
+ 
 WORKDIR /src
 COPY NuGet.config ./
 
