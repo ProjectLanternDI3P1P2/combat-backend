@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.10
 
 ARG DOTNET_VERSION=10.0
 
@@ -6,7 +6,7 @@ ARG DOTNET_VERSION=10.0
 # 1. RESTORE
 # ============================================================
 FROM dhi/dotnet:10.0-sdk AS build
- 
+
 WORKDIR /src
 COPY NuGet.config ./
 
