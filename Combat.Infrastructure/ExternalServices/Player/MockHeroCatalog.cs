@@ -87,6 +87,10 @@ public static class MockHeroCatalog
 
     public static HeroCombatSnapshot? Find(Guid heroId) => Heroes.GetValueOrDefault(heroId);
 
+    /// <summary>Every mocked hero, used when a session roster is served.</summary>
+    public static IReadOnlyList<Guid> HeroIds { get; } =
+    [WarriorHeroId, MageHeroId, WoundedRogueHeroId];
+
     private static HeroAbility Ability(
         string abilityId,
         string name,

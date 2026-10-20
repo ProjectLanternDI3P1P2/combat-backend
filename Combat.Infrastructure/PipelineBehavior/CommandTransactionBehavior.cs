@@ -17,7 +17,7 @@ public sealed class CommandTransactionBehavior<TRequest, TResponse>(CombatDbCont
     {
         ArgumentNullException.ThrowIfNull(next);
 
-        if (request is not ICommand)
+        if (request is not ICommandMarker)
         {
             return await next(cancellationToken);
         }
