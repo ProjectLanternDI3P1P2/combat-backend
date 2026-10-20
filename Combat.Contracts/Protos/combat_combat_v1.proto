@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package combat.v1;
+
+option csharp_namespace = "Combat.Contracts.V1";
+
+// Contract owned by the Combat microservice. Field numbers are permanent:
+// do not reuse a deleted number; reserve it instead.
+
+// Internal surface used by the Dungeon service to open a combat.
+// The REST API remains the client-facing interface.
+service CombatService {
+  rpc CreateCombat (CreateCombatRequest) returns (CreateCombatResponse);
+}
+
+enum EncounterType {
+  ENCOUNTER_TYPE_UNSPECIFIED = 0;
+  ENCOUNTER_TYPE_ENEMY = 1;
+  ENCOUNTER_TYPE_SUB_BOSS = 2;
+  ENCOUNTER_TYPE_BOSS = 3;
+}
+
+message CreateCombatRequest {
+  // RFC 4122 textual UUID of the game session the combat belongs to.
+  string session_id = 1;
+  // RFC 4122 textual UUID of the encounter that caused the combat.
+  string encounter_id = 2;
+  // RFC 4122 textual UUID of the command. The same command never opens two combats.
+  string command_id = 3;
+  // Kind of encounter reported by the Dungeon service.
+  EncounterType encounter_type = 4;
+}
+
+message CreateCombatResponse {
+  string combat_id = 1;
+  string session_id = 2;
+  string encounter_id = 3;
+  EncounterType encounter_type = 4;
+  string status = 5;
+  repeated CombatParticipant participants = 6;
+}
+
+// Temporary combat state of a participant, valid for the duration of the combat.
+message CombatParticipant {
+  string fighter_id = 1;
+  // Hero or Monster.
+  string type = 2;
+  // Identifier of the participant in its owning service.
+  string external_id = 3;
+  string name = 4;
+  int32 level = 5;
+  int32 current_hp = 6;
+  int32 max_hp = 7;
+  int32 current_mana = 8;
+  int32 max_mana = 9;
+  int32 attack = 10;
+  int32 defense = 11;
+  int32 speed = 12;
+  // Active or KnockedOut.
+  string state = 13;
+  repeated CombatAbility abilities = 14;
+  repeated CombatEffect effects = 15;
+}
+
+message CombatAbility {
+  string ability_id = 1;
+  string name = 2;
+  int32 mana_cost = 3;
+  string target_type = 4;
+}
+
+// Buff, debuff or status effect carried by the participant.
+message CombatEffect {
+  string effect_id = 1;
+  string name = 2;
+  // Buff, Debuff or StatusEffect.
+  string kind = 3;
+  // Empty when the effect has no intrinsic duration.
+  optional int32 remaining_turns = 4;
+}
