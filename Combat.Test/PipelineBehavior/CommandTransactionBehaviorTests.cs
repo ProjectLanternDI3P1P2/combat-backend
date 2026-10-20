@@ -73,6 +73,36 @@ public sealed class CommandTransactionBehaviorTests
             .BeNull();
     }
 
+    [Fact]
+    public async Task Handle_CommandWithResult_CommitsChanges()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        await using var dbContext = CreateInMemoryDbContext(databaseName);
+        var behavior = new CommandTransactionBehavior<CreatePlayerResultCommand, string>(dbContext);
+        var player = new Player { Id = Guid.NewGuid(), Name = "Committed with result" };
+
+        string result = await behavior.Handle(
+            new CreatePlayerResultCommand(player),
+            _ =>
+            {
+                dbContext.Players.Add(player);
+                return Task.FromResult(player.Name);
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        result.Should().Be(player.Name);
+        await using var verificationContext = CreateInMemoryDbContext(databaseName);
+        (
+            await verificationContext.Players.FindAsync(
+                [player.Id],
+                TestContext.Current.CancellationToken
+            )
+        )
+            .Should()
+            .NotBeNull();
+    }
+
     private static CombatDbContext CreateInMemoryDbContext(string? databaseName = null)
     {
         var options = new DbContextOptionsBuilder<CombatDbContext>()
@@ -83,4 +113,6 @@ public sealed class CommandTransactionBehaviorTests
     }
 
     private sealed record CreatePlayerCommand(Player Player) : ICommand;
+
+    private sealed record CreatePlayerResultCommand(Player Player) : ICommand<string>;
 }
