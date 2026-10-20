@@ -49,11 +49,14 @@ name in `NuGet.config`; never commit the token or add it to a tracked `.env` fil
 
 ## Internal gRPC contract
 
-`Combat.Contracts` owns the versioned `combat_player_v1.proto` contract and the
-generated C# gRPC types. It is referenced locally by the server projects; it never
-pulls this service's Domain or Application types into the wire contract.
+`Combat.Contracts` owns the versioned `combat_player_v1.proto` and
+`combat_combat_v1.proto` contracts and the generated C# gRPC types. It is
+referenced locally by the server projects; it never pulls this service's Domain
+or Application types into the wire contract.
 
 The template exposes `CombatPlayerService/GetPlayer` on its internal gRPC endpoint.
+`CombatService/CreateCombat` opens a combat from an encounter reported by the
+Dungeon service; see [creation du combat](docs/architecture/CREATION_COMBAT.fr.md).
 The REST API remains the client-facing interface. Locally, gRPC listens on
 `http://localhost:8081`; Docker binds it only to loopback. In Kubernetes, expose
 that port through an internal-only Service, never through the ingress.
@@ -91,7 +94,8 @@ docker compose up -d --build
 ```
 
 The API listens on <http://localhost:8080>, Postgres on host port 5433, and the
-RabbitMQ management UI on <http://localhost:15672> (`combat` / `combat`). Because
+RabbitMQ management UI on <http://localhost:15672> (`combat` / `combat`). The
+internal gRPC endpoint listens on <http://localhost:8081>. Because
 `ASPNETCORE_ENVIRONMENT` is `Development`, the OpenAPI document is served at
 `/openapi/v1.json` and the Scalar UI at `/scalar`.
 
@@ -104,6 +108,10 @@ docker compose down -v   # -v also drops the database volume
 In Development, the application applies the service migrations and seeds example
 players on startup. This template intentionally contains no EF Core migration:
 create the initial migration after creating a service from it.
+
+The internal gRPC operations are exercised with `grpcurl` against the contract
+in `Combat.Contracts/Protos`; see
+[creation du combat](docs/architecture/CREATION_COMBAT.fr.md).
 
 ## Toolchain
 
