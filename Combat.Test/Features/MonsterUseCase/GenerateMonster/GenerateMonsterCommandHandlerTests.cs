@@ -26,7 +26,7 @@ public sealed class GenerateMonsterCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NewRequest_GeneratesLevelAndScaledStats()
+    public async Task Handle_NewRequest_AddsMonsterFromRequestedClass()
     {
         Guid dungeonRunId = Guid.NewGuid();
         Guid idempotencyKey = Guid.NewGuid();
@@ -43,12 +43,9 @@ public sealed class GenerateMonsterCommandHandlerTests
             .ReturnsAsync([definition]);
         _monsterRepository
             .Setup(repository =>
-                repository.AddOrGetByIdempotencyKeyAsync(
-                    It.IsAny<Monster>(),
-                    It.IsAny<CancellationToken>()
-                )
+                repository.AddAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>())
             )
-            .ReturnsAsync((Monster monster, CancellationToken _) => monster);
+            .Returns(Task.CompletedTask);
 
         GenerateMonsterResult result = await _handler.Handle(
             new GenerateMonsterCommand(
@@ -63,14 +60,17 @@ public sealed class GenerateMonsterCommandHandlerTests
 
         result.MonsterClass.Should().Be(MonsterClass.Ordinary);
         result.Level.Should().Be(5);
-        result.BaseHealth.Should().Be(54);
-        result.BaseAttack.Should().Be(54);
-        result.BaseDefense.Should().Be(54);
-        result.BaseSpeed.Should().Be(54);
+        result.MonsterId.Should().NotBeEmpty();
         _monsterRepository.Verify(
             repository =>
-                repository.AddOrGetByIdempotencyKeyAsync(
-                    It.IsAny<Monster>(),
+                repository.AddAsync(
+                    It.Is<Monster>(monster =>
+                        monster.Id == result.MonsterId
+                        && monster.MonsterDefinitionId == definition.Id
+                        && monster.DungeonRunId == dungeonRunId
+                        && monster.IdempotencyKey == idempotencyKey
+                        && monster.PlayerCount == 3
+                    ),
                     It.IsAny<CancellationToken>()
                 ),
             Times.Once
