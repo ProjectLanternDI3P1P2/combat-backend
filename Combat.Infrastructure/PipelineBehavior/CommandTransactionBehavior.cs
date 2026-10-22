@@ -17,7 +17,7 @@ public sealed class CommandTransactionBehavior<TRequest, TResponse>(CombatDbCont
     {
         ArgumentNullException.ThrowIfNull(next);
 
-        if (request is not ICommand)
+        if (request is not ICommandRequest)
         {
             return await next(cancellationToken);
         }
@@ -27,6 +27,13 @@ public sealed class CommandTransactionBehavior<TRequest, TResponse>(CombatDbCont
             TResponse response = await next(cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return response;
+        }
+
+        // An internal command called during combat initialization shares its caller's
+        // transaction. Only the outer command saves and commits the complete operation.
+        if (dbContext.Database.CurrentTransaction is not null)
+        {
+            return await next(cancellationToken);
         }
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
