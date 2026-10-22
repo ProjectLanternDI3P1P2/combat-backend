@@ -40,25 +40,15 @@ public sealed class GenerateMonsterCommandHandler(
                 )
                 : definitions[Random.Shared.Next(definitions.Count)];
 
-        int statMultiplier =
-            1 + ((request.PlayerCount - 1) * options.Value.AdditionalPlayerStatMultiplier);
-        int floorIncrease = (request.Floor - 1) * options.Value.StatIncreasePerFloor;
-        var monster = new Monster
-        {
-            Id = Guid.NewGuid(),
-            DungeonRunId = request.DungeonRunId,
-            IdempotencyKey = request.IdempotencyKey,
-            MonsterDefinitionId = definition.Id,
-            Name = definition.Name,
-            Class = definition.Class,
-            Level = request.Floor,
-            PlayerCount = request.PlayerCount,
-            ImageUrl = definition.ImageUrl,
-            BaseHealth = checked((definition.BaseHealth + floorIncrease) * statMultiplier),
-            BaseAttack = checked((definition.BaseAttack + floorIncrease) * statMultiplier),
-            BaseDefense = checked((definition.BaseDefense + floorIncrease) * statMultiplier),
-            BaseSpeed = checked((definition.BaseSpeed + floorIncrease) * statMultiplier),
-        };
+        Monster monster = Monster.Create(
+            definition,
+            request.DungeonRunId,
+            request.IdempotencyKey,
+            request.Floor,
+            request.PlayerCount,
+            options.Value.StatIncreasePerFloor,
+            options.Value.AdditionalPlayerStatMultiplier
+        );
 
         await monsterRepository.AddAsync(monster, cancellationToken);
         return GenerateMonsterResult.From(monster);

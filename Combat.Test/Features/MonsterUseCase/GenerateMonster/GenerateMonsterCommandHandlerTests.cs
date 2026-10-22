@@ -25,16 +25,8 @@ public sealed class GenerateMonsterCommandHandlerTests
         );
     }
 
-    [Theory]
-    [InlineData(1, 1, 10)]
-    [InlineData(5, 3, 54)]
-    [InlineData(40, 1, 88)]
-    [InlineData(1, 4, 40)]
-    public async Task Handle_NewRequest_GeneratesLevelAndScaledStats(
-        int floor,
-        int playerCount,
-        int expectedStat
-    )
+    [Fact]
+    public async Task Handle_NewRequest_AddsMonsterFromRequestedClass()
     {
         Guid dungeonRunId = Guid.NewGuid();
         Guid idempotencyKey = Guid.NewGuid();
@@ -59,21 +51,28 @@ public sealed class GenerateMonsterCommandHandlerTests
             new GenerateMonsterCommand(
                 dungeonRunId,
                 idempotencyKey,
-                Floor: floor,
-                PlayerCount: playerCount,
+                Floor: 5,
+                PlayerCount: 3,
                 MonsterClass: MonsterClass.Ordinary
             ),
             CancellationToken.None
         );
 
         result.MonsterClass.Should().Be(MonsterClass.Ordinary);
-        result.Level.Should().Be(floor);
-        result.BaseHealth.Should().Be(expectedStat);
-        result.BaseAttack.Should().Be(expectedStat);
-        result.BaseDefense.Should().Be(expectedStat);
-        result.BaseSpeed.Should().Be(expectedStat);
+        result.Level.Should().Be(5);
+        result.MonsterId.Should().NotBeEmpty();
         _monsterRepository.Verify(
-            repository => repository.AddAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()),
+            repository =>
+                repository.AddAsync(
+                    It.Is<Monster>(monster =>
+                        monster.Id == result.MonsterId
+                        && monster.MonsterDefinitionId == definition.Id
+                        && monster.DungeonRunId == dungeonRunId
+                        && monster.IdempotencyKey == idempotencyKey
+                        && monster.PlayerCount == 3
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
             Times.Once
         );
     }
