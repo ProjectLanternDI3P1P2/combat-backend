@@ -7,53 +7,81 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Combat.Test.Persistence.Repositories;
 
-public class MonsterRepositoryTests
+public sealed class MonsterRepositoryTests
 {
+    [Fact]
+    public async Task AddOrGetByIdempotencyKeyAsync_NewMonster_PersistsAndReturnsMonster()
+    {
+        await using CombatDbContext context = CreateInMemoryDbContext();
+        var repository = new MonsterRepository(context);
+        Monster monster = CreateMonster();
+
+        Monster result = await repository.AddOrGetByIdempotencyKeyAsync(
+            monster,
+            TestContext.Current.CancellationToken
+        );
+
+        result.Should().BeSameAs(monster);
+        (await context.Monsters.SingleAsync(TestContext.Current.CancellationToken))
+            .Id.Should()
+            .Be(monster.Id);
+    }
+
+    [Fact]
+    public async Task GetByIdempotencyKeyAsync_WhenMonsterExists_ReturnsIt()
+    {
+        await using CombatDbContext context = CreateInMemoryDbContext();
+        Monster monster = CreateMonster();
+        context.Monsters.Add(monster);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var repository = new MonsterRepository(context);
+
+        Monster? result = await repository.GetByIdempotencyKeyAsync(
+            monster.IdempotencyKey,
+            TestContext.Current.CancellationToken
+        );
+
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(monster.Id);
+    }
+
+    [Fact]
+    public async Task GetByIdempotencyKeyAsync_WhenMonsterDoesNotExist_ReturnsNull()
+    {
+        await using CombatDbContext context = CreateInMemoryDbContext();
+        var repository = new MonsterRepository(context);
+
+        Monster? result = await repository.GetByIdempotencyKeyAsync(
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken
+        );
+
+        result.Should().BeNull();
+    }
+
     private static CombatDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<CombatDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-
         return new CombatDbContext(options);
     }
 
-    [Fact]
-    public async Task AddMonsterAsync_ValidMonster_PersistsMonster()
-    {
-        // Arrange
-        await using var dbContext = CreateInMemoryDbContext();
-        var repository = new MonsterRepository(dbContext);
-        var monster = CreateMonster();
-
-        // Act
-        await repository.AddMonsterAsync(monster, TestContext.Current.CancellationToken);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        // Assert
-        var storedMonster = await dbContext.Monsters.FindAsync(
-            [monster.MonsterId],
-            TestContext.Current.CancellationToken
-        );
-        storedMonster.Should().NotBeNull();
-        storedMonster!.CombatId.Should().Be(monster.CombatId);
-        storedMonster.IsBoss.Should().Be(monster.IsBoss);
-        storedMonster.BaseHp.Should().Be(monster.BaseHp);
-        storedMonster.State.Should().Be(monster.State);
-    }
-
-    private static Monster CreateMonster()
-    {
-        return new Monster
+    private static Monster CreateMonster() =>
+        new()
         {
-            MonsterId = Guid.NewGuid(),
-            CombatId = Guid.NewGuid(),
-            IsBoss = false,
-            BaseHp = 30,
-            BaseAttack = 8,
-            BaseDefense = 4,
+            Id = Guid.NewGuid(),
+            DungeonRunId = Guid.NewGuid(),
+            IdempotencyKey = Guid.NewGuid(),
+            MonsterDefinitionId = Guid.NewGuid(),
+            Name = "Test monster",
+            Class = MonsterClass.Ordinary,
+            Level = 1,
+            PlayerCount = 1,
+            ImageUrl = "/assets/monsters/test.png",
+            BaseHealth = 10,
+            BaseAttack = 10,
+            BaseDefense = 10,
             BaseSpeed = 10,
-            State = MonsterState.Alive,
         };
-    }
 }

@@ -4,5 +4,13 @@ namespace Combat.Domain.Repositories;
 
 public interface IMonsterRepository
 {
-    Task AddMonsterAsync(Monster monster, CancellationToken cancellationToken);
+    Task<Monster?> GetByIdempotencyKeyAsync(
+        Guid idempotencyKey,
+        CancellationToken cancellationToken
+    );
+
+    Task<Monster> AddOrGetByIdempotencyKeyAsync(
+        Monster monster,
+        CancellationToken cancellationToken
+    );
 }

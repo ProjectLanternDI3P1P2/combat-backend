@@ -1,15 +1,16 @@
+using Combat.Application.Exceptions;
 using Combat.Application.Models;
-using Combat.Application.Ports;
 using Combat.Domain.Entities;
-using Combat.Domain.Enums;
 using Combat.Domain.Repositories;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace Combat.Application.Features.MonsterUseCase.GenerateMonster;
 
 public sealed class GenerateMonsterCommandHandler(
-    IMonsterTypeCatalog monsterTypeCatalog,
-    IMonsterRepository monsterRepository
+    IMonsterRepository monsterRepository,
+    IMonsterDefinitionRepository monsterDefinitionRepository,
+    IOptions<MonsterGenerationOptions> options
 ) : IRequestHandler<GenerateMonsterCommand, GenerateMonsterResult>
 {
     public async Task<GenerateMonsterResult> Handle(
@@ -17,37 +18,67 @@ public sealed class GenerateMonsterCommandHandler(
         CancellationToken cancellationToken
     )
     {
-        IReadOnlyList<MonsterTypeDefinition> resolved =
-            await monsterTypeCatalog.ResolveRequiredAsync(
-                [request.MonsterTypeId],
+        Monster? existingMonster = await monsterRepository.GetByIdempotencyKeyAsync(
+            request.IdempotencyKey,
+            cancellationToken
+        );
+        if (existingMonster is not null)
+        {
+            EnsureSameRequest(existingMonster, request);
+            return GenerateMonsterResult.From(existingMonster);
+        }
+
+        IReadOnlyList<MonsterDefinition> definitions =
+            await monsterDefinitionRepository.GetByClassAsync(
+                request.MonsterClass,
                 cancellationToken
             );
-        MonsterTypeDefinition monsterType = resolved[0];
+        MonsterDefinition definition =
+            definitions.Count == 0
+                ? throw new KeyNotFoundException(
+                    $"No monster definition is configured for class '{request.MonsterClass}'."
+                )
+                : definitions[Random.Shared.Next(definitions.Count)];
 
-        Monster monster = new()
+        int statMultiplier =
+            1 + ((request.PlayerCount - 1) * options.Value.AdditionalPlayerStatMultiplier);
+        int floorIncrease = (request.Floor - 1) * options.Value.StatIncreasePerFloor;
+        var monster = new Monster
         {
-            MonsterId = Guid.NewGuid(),
-            CombatId = request.CombatId,
-            IsBoss = monsterType.IsBoss,
-            BaseHp = monsterType.BaseHealth,
-            BaseAttack = monsterType.BaseAttack,
-            BaseDefense = monsterType.BaseDefense,
-            BaseSpeed = monsterType.BaseSpeed,
-            State = MonsterState.Alive,
+            Id = Guid.NewGuid(),
+            DungeonRunId = request.DungeonRunId,
+            IdempotencyKey = request.IdempotencyKey,
+            MonsterDefinitionId = definition.Id,
+            Name = definition.Name,
+            Class = definition.Class,
+            Level = request.Floor,
+            PlayerCount = request.PlayerCount,
+            ImageUrl = definition.ImageUrl,
+            BaseHealth = checked((definition.BaseHealth + floorIncrease) * statMultiplier),
+            BaseAttack = checked((definition.BaseAttack + floorIncrease) * statMultiplier),
+            BaseDefense = checked((definition.BaseDefense + floorIncrease) * statMultiplier),
+            BaseSpeed = checked((definition.BaseSpeed + floorIncrease) * statMultiplier),
         };
 
-        await monsterRepository.AddMonsterAsync(monster, cancellationToken);
+        Monster persistedMonster = await monsterRepository.AddOrGetByIdempotencyKeyAsync(
+            monster,
+            cancellationToken
+        );
+        EnsureSameRequest(persistedMonster, request);
+        return GenerateMonsterResult.From(persistedMonster);
+    }
 
-        return new GenerateMonsterResult
+    private static void EnsureSameRequest(Monster monster, GenerateMonsterCommand request)
+    {
+        bool isSameRequest =
+            monster.DungeonRunId == request.DungeonRunId
+            && monster.Level == request.Floor
+            && monster.PlayerCount == request.PlayerCount
+            && monster.Class == request.MonsterClass;
+
+        if (!isSameRequest)
         {
-            MonsterId = monster.MonsterId,
-            CombatId = monster.CombatId,
-            IsBoss = monster.IsBoss,
-            BaseHp = monster.BaseHp,
-            BaseAttack = monster.BaseAttack,
-            BaseDefense = monster.BaseDefense,
-            BaseSpeed = monster.BaseSpeed,
-            State = monster.State,
-        };
+            throw new IdempotencyKeyReuseException(request.IdempotencyKey);
+        }
     }
 }

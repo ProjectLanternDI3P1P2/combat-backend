@@ -1,13 +1,19 @@
+using Combat.Application.Models;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace Combat.Application.Features.MonsterUseCase.GenerateMonster;
 
-public class GenerateMonsterValidator : AbstractValidator<GenerateMonsterCommand>
+public sealed class GenerateMonsterValidator : AbstractValidator<GenerateMonsterCommand>
 {
-    public GenerateMonsterValidator()
+    public GenerateMonsterValidator(IOptions<MonsterGenerationOptions> options)
     {
-        RuleFor(m => m.CombatId).NotEmpty().WithMessage("CombatId is required.");
+        MonsterGenerationOptions generationOptions = options.Value;
 
-        RuleFor(m => m.MonsterTypeId).NotEmpty().WithMessage("MonsterTypeId is required.");
+        RuleFor(command => command.DungeonRunId).NotEmpty();
+        RuleFor(command => command.IdempotencyKey).NotEmpty();
+        RuleFor(command => command.Floor).InclusiveBetween(1, generationOptions.MaxFloor);
+        RuleFor(command => command.PlayerCount).GreaterThanOrEqualTo(1);
+        RuleFor(command => command.MonsterClass).IsInEnum();
     }
 }

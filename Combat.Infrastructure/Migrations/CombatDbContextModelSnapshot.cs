@@ -24,7 +24,7 @@ namespace Combat.Infrastructure.Migrations
 
             modelBuilder.Entity("Combat.Domain.Entities.Monster", b =>
                 {
-                    b.Property<Guid>("MonsterId")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("MonsterId");
@@ -37,30 +37,108 @@ namespace Combat.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("MonsterBaseDefense");
 
-                    b.Property<int>("BaseHp")
+                    b.Property<int>("BaseHealth")
                         .HasColumnType("integer")
-                        .HasColumnName("MonsterBaseHp");
+                        .HasColumnName("MonsterBaseHealth");
 
                     b.Property<int>("BaseSpeed")
                         .HasColumnType("integer")
                         .HasColumnName("MonsterBaseSpeed");
 
-                    b.Property<Guid>("CombatId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("MonsterCombatId");
-
-                    b.Property<bool>("IsBoss")
-                        .HasColumnType("boolean")
-                        .HasColumnName("MonsterIsBoss");
-
-                    b.Property<string>("State")
+                    b.Property<string>("Class")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("MonsterState");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("MonsterClass");
 
-                    b.HasKey("MonsterId");
+                    b.Property<Guid>("DungeonRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("MonsterDungeonRunId");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("MonsterIdempotencyKey");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("MonsterImageUrl");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("MonsterLevel");
+
+                    b.Property<Guid>("MonsterDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("MonsterDefinitionId");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("MonsterName");
+
+                    b.Property<int>("PlayerCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("MonsterPlayerCount");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("MonsterDefinitionId");
 
                     b.ToTable("Monsters");
+                });
+
+            modelBuilder.Entity("Combat.Domain.Entities.MonsterDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("MonsterDefinitionId");
+
+                    b.Property<int>("BaseAttack")
+                        .HasColumnType("integer")
+                        .HasColumnName("MonsterDefinitionBaseAttack");
+
+                    b.Property<int>("BaseDefense")
+                        .HasColumnType("integer")
+                        .HasColumnName("MonsterDefinitionBaseDefense");
+
+                    b.Property<int>("BaseHealth")
+                        .HasColumnType("integer")
+                        .HasColumnName("MonsterDefinitionBaseHealth");
+
+                    b.Property<int>("BaseSpeed")
+                        .HasColumnType("integer")
+                        .HasColumnName("MonsterDefinitionBaseSpeed");
+
+                    b.Property<string>("Class")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("MonsterDefinitionClass");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("MonsterDefinitionImageUrl");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("MonsterDefinitionName");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Class");
+
+                    b.ToTable("MonsterDefinitions");
                 });
 
             modelBuilder.Entity("Combat.Domain.Entities.Player", b =>
@@ -91,6 +169,17 @@ namespace Combat.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Players");
+                });
+
+            modelBuilder.Entity("Combat.Domain.Entities.Monster", b =>
+                {
+                    b.HasOne("Combat.Domain.Entities.MonsterDefinition", "MonsterDefinition")
+                        .WithMany()
+                        .HasForeignKey("MonsterDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MonsterDefinition");
                 });
 #pragma warning restore 612, 618
         }

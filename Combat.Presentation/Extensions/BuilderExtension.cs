@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Combat.Presentation.Extensions.LogExtension;
 using Combat.Presentation.Grpc.Interceptors;
 using Combat.Presentation.Middleware;
@@ -10,11 +9,7 @@ public static class BuilderExtension
 {
     public static WebApplicationBuilder ConfigureApi(this WebApplicationBuilder builder)
     {
-        builder
-            .Services.AddControllers()
-            .AddJsonOptions(options =>
-                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
-            );
+        builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi();
         builder.Services.AddHealthChecks();

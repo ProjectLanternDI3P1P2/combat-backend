@@ -1,56 +1,56 @@
 using Combat.Application.Features.MonsterUseCase.GenerateMonster;
+using Combat.Application.Models;
+using Combat.Domain.Enums;
+using FluentAssertions;
 using FluentValidation.TestHelper;
+using Microsoft.Extensions.Options;
 
 namespace Combat.Test.Features.MonsterUseCase.GenerateMonster;
 
-public class GenerateMonsterValidatorTests
+public sealed class GenerateMonsterValidatorTests
 {
-    private readonly GenerateMonsterValidator _validator = new();
-
-    private static GenerateMonsterCommand ValidCommand() => new(Guid.NewGuid(), Guid.NewGuid());
+    private readonly GenerateMonsterValidator _validator = new(
+        Options.Create(new MonsterGenerationOptions { MaxFloor = 40 })
+    );
 
     [Fact]
     public void Validate_ValidCommand_HasNoValidationErrors()
     {
-        // Arrange
-        var command = ValidCommand();
+        TestValidationResult<GenerateMonsterCommand> result = _validator.TestValidate(
+            ValidCommand()
+        );
 
-        // Act
-        var result = _validator.TestValidate(command);
-
-        // Assert
         result.ShouldNotHaveAnyValidationErrors();
     }
 
-    [Fact]
-    public void Validate_EmptyCombatId_HasValidationErrorForCombatId()
+    [Theory]
+    [InlineData(true, false, 1, 1, MonsterClass.Ordinary)]
+    [InlineData(false, true, 1, 1, MonsterClass.Ordinary)]
+    [InlineData(false, false, 0, 1, MonsterClass.Ordinary)]
+    [InlineData(false, false, 41, 1, MonsterClass.Ordinary)]
+    [InlineData(false, false, 1, 0, MonsterClass.Ordinary)]
+    [InlineData(false, false, 1, 1, (MonsterClass)99)]
+    public void Validate_InvalidCommand_HasValidationErrors(
+        bool emptyDungeonRunId,
+        bool emptyIdempotencyKey,
+        int floor,
+        int playerCount,
+        MonsterClass monsterClass
+    )
     {
-        // Arrange
-        var command = ValidCommand() with
-        {
-            CombatId = Guid.Empty,
-        };
+        GenerateMonsterCommand command = new(
+            emptyDungeonRunId ? Guid.Empty : Guid.NewGuid(),
+            emptyIdempotencyKey ? Guid.Empty : Guid.NewGuid(),
+            floor,
+            playerCount,
+            monsterClass
+        );
 
-        // Act
-        var result = _validator.TestValidate(command);
+        TestValidationResult<GenerateMonsterCommand> result = _validator.TestValidate(command);
 
-        // Assert
-        result.ShouldHaveValidationErrorFor(request => request.CombatId);
+        result.Errors.Should().NotBeEmpty();
     }
 
-    [Fact]
-    public void Validate_EmptyMonsterTypeId_HasValidationErrorForMonsterTypeId()
-    {
-        // Arrange
-        var command = ValidCommand() with
-        {
-            MonsterTypeId = Guid.Empty,
-        };
-
-        // Act
-        var result = _validator.TestValidate(command);
-
-        // Assert
-        result.ShouldHaveValidationErrorFor(request => request.MonsterTypeId);
-    }
+    private static GenerateMonsterCommand ValidCommand() =>
+        new(Guid.NewGuid(), Guid.NewGuid(), 1, 1, MonsterClass.Ordinary);
 }

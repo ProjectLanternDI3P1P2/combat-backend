@@ -4,30 +4,38 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Combat.Infrastructure.Persistence.Configurations;
 
-public class MonsterConfiguration : IEntityTypeConfiguration<Monster>
+public sealed class MonsterConfiguration : IEntityTypeConfiguration<Monster>
 {
     public void Configure(EntityTypeBuilder<Monster> builder)
     {
-        builder.HasKey(m => m.MonsterId);
-
-        builder.Property(m => m.MonsterId).IsRequired().HasColumnName("MonsterId");
-
-        builder.Property(m => m.CombatId).IsRequired().HasColumnName("MonsterCombatId");
-
-        builder.Property(m => m.IsBoss).IsRequired().HasColumnName("MonsterIsBoss");
-
-        builder.Property(m => m.BaseHp).IsRequired().HasColumnName("MonsterBaseHp");
-
-        builder.Property(m => m.BaseAttack).IsRequired().HasColumnName("MonsterBaseAttack");
-
-        builder.Property(m => m.BaseDefense).IsRequired().HasColumnName("MonsterBaseDefense");
-
-        builder.Property(m => m.BaseSpeed).IsRequired().HasColumnName("MonsterBaseSpeed");
-
+        builder.HasKey(monster => monster.Id);
+        builder.Property(monster => monster.Id).HasColumnName("MonsterId");
+        builder.Property(monster => monster.DungeonRunId).HasColumnName("MonsterDungeonRunId");
+        builder.Property(monster => monster.IdempotencyKey).HasColumnName("MonsterIdempotencyKey");
         builder
-            .Property(m => m.State)
-            .IsRequired()
-            .HasColumnName("MonsterState")
-            .HasConversion<string>();
+            .Property(monster => monster.MonsterDefinitionId)
+            .HasColumnName("MonsterDefinitionId");
+        builder.Property(monster => monster.Name).HasMaxLength(100).HasColumnName("MonsterName");
+        builder
+            .Property(monster => monster.Class)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasColumnName("MonsterClass");
+        builder.Property(monster => monster.Level).HasColumnName("MonsterLevel");
+        builder.Property(monster => monster.PlayerCount).HasColumnName("MonsterPlayerCount");
+        builder
+            .Property(monster => monster.ImageUrl)
+            .HasMaxLength(300)
+            .HasColumnName("MonsterImageUrl");
+        builder.Property(monster => monster.BaseHealth).HasColumnName("MonsterBaseHealth");
+        builder.Property(monster => monster.BaseAttack).HasColumnName("MonsterBaseAttack");
+        builder.Property(monster => monster.BaseDefense).HasColumnName("MonsterBaseDefense");
+        builder.Property(monster => monster.BaseSpeed).HasColumnName("MonsterBaseSpeed");
+        builder.HasIndex(monster => monster.IdempotencyKey).IsUnique();
+        builder
+            .HasOne(monster => monster.MonsterDefinition)
+            .WithMany()
+            .HasForeignKey(monster => monster.MonsterDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

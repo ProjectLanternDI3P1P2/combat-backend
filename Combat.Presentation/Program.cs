@@ -1,19 +1,16 @@
+using System.Text.Json.Serialization;
 using Combat.Application;
 using Combat.Infrastructure;
 using Combat.Infrastructure.Persistence.Seeding;
 using Combat.Presentation.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
-bool enableMonsterTypeMocks = MonsterTypeMockActivation.IsEnabled(
-    builder.Environment,
-    builder.Configuration
+builder.ConfigureApi();
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
 );
 
-builder.ConfigureApi();
-
-builder
-    .Services.AddInfrastructureServices(builder.Configuration, enableMonsterTypeMocks)
-    .AddApplicationServices();
+builder.Services.AddInfrastructureServices(builder.Configuration).AddApplicationServices();
 
 var app = builder.Build();
 
