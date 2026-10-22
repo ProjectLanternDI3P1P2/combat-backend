@@ -60,12 +60,8 @@ public sealed class GenerateMonsterCommandHandler(
             BaseSpeed = checked((definition.BaseSpeed + floorIncrease) * statMultiplier),
         };
 
-        Monster persistedMonster = await monsterRepository.AddOrGetByIdempotencyKeyAsync(
-            monster,
-            cancellationToken
-        );
-        EnsureSameRequest(persistedMonster, request);
-        return GenerateMonsterResult.From(persistedMonster);
+        await monsterRepository.AddAsync(monster, cancellationToken);
+        return GenerateMonsterResult.From(monster);
     }
 
     private static void EnsureSameRequest(Monster monster, GenerateMonsterCommand request)

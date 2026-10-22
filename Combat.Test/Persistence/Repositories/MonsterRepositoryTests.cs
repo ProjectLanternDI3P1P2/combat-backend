@@ -10,21 +10,24 @@ namespace Combat.Test.Persistence.Repositories;
 public sealed class MonsterRepositoryTests
 {
     [Fact]
-    public async Task AddOrGetByIdempotencyKeyAsync_NewMonster_PersistsAndReturnsMonster()
+    public async Task AddAsync_NewMonster_StagesWithoutSaving()
     {
         await using CombatDbContext context = CreateInMemoryDbContext();
         var repository = new MonsterRepository(context);
         Monster monster = CreateMonster();
 
-        Monster result = await repository.AddOrGetByIdempotencyKeyAsync(
-            monster,
-            TestContext.Current.CancellationToken
-        );
+        await repository.AddAsync(monster, TestContext.Current.CancellationToken);
 
-        result.Should().BeSameAs(monster);
-        (await context.Monsters.SingleAsync(TestContext.Current.CancellationToken))
-            .Id.Should()
-            .Be(monster.Id);
+        context.Entry(monster).State.Should().Be(EntityState.Added);
+        (await context.Monsters.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (
+            await repository.GetByIdempotencyKeyAsync(
+                monster.IdempotencyKey,
+                TestContext.Current.CancellationToken
+            )
+        )
+            .Should()
+            .BeSameAs(monster);
     }
 
     [Fact]
