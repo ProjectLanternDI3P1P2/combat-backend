@@ -171,6 +171,173 @@ namespace Combat.Infrastructure.Migrations
                     b.ToTable("Players");
                 });
 
+            modelBuilder.Entity("Combat.Infrastructure.Persistence.Records.CombatFighterRecord", b =>
+                {
+                    b.Property<Guid>("FighterId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatFighterId");
+
+                    b.Property<string>("AbilitiesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatFighterAbilities");
+
+                    b.Property<int>("Attack")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterAttack");
+
+                    b.Property<Guid>("CombatId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatId");
+
+                    b.Property<int>("CurrentHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterCurrentHp");
+
+                    b.Property<int>("CurrentMana")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterCurrentMana");
+
+                    b.Property<int>("Defense")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterDefense");
+
+                    b.Property<string>("EffectsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatFighterEffects");
+
+                    b.Property<Guid>("ExternalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatFighterExternalId");
+
+                    b.Property<int>("InitialAttack")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialAttack");
+
+                    b.Property<int>("InitialCurrentHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialCurrentHp");
+
+                    b.Property<int>("InitialCurrentMana")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialCurrentMana");
+
+                    b.Property<int>("InitialDefense")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialDefense");
+
+                    b.Property<int>("InitialMaxHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialMaxHp");
+
+                    b.Property<int>("InitialMaxMana")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialMaxMana");
+
+                    b.Property<int>("InitialSpeed")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterInitialSpeed");
+
+                    b.Property<bool>("IsFromMockedData")
+                        .HasColumnType("boolean")
+                        .HasColumnName("CombatFighterIsFromMockedData");
+
+                    b.Property<string>("ItemsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatFighterItems");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterLevel");
+
+                    b.Property<int>("MaxHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterMaxHp");
+
+                    b.Property<int>("MaxMana")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterMaxMana");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("CombatFighterName");
+
+                    b.Property<int>("Speed")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterSpeed");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("CombatFighterState");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("CombatFighterType");
+
+                    b.HasKey("FighterId");
+
+                    b.HasIndex("CombatId");
+
+                    b.ToTable("CombatFighters", (string)null);
+                });
+
+            modelBuilder.Entity("Combat.Infrastructure.Persistence.Records.CombatInstanceRecord", b =>
+                {
+                    b.Property<Guid>("CombatId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatId");
+
+                    b.Property<Guid>("CommandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatCommandId");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatEncounterId");
+
+                    b.Property<string>("EncounterType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("CombatEncounterType");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatSessionId");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CombatStartedAt");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("CombatStatus");
+
+                    b.HasKey("CombatId");
+
+                    b.HasIndex("CommandId")
+                        .IsUnique();
+
+                    b.HasIndex("EncounterId")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("CombatInstances", (string)null);
+                });
+
             modelBuilder.Entity("Combat.Domain.Entities.Monster", b =>
                 {
                     b.HasOne("Combat.Domain.Entities.MonsterDefinition", "MonsterDefinition")
@@ -180,6 +347,20 @@ namespace Combat.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("MonsterDefinition");
+                });
+
+            modelBuilder.Entity("Combat.Infrastructure.Persistence.Records.CombatFighterRecord", b =>
+                {
+                    b.HasOne("Combat.Infrastructure.Persistence.Records.CombatInstanceRecord", null)
+                        .WithMany("Fighters")
+                        .HasForeignKey("CombatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Combat.Infrastructure.Persistence.Records.CombatInstanceRecord", b =>
+                {
+                    b.Navigation("Fighters");
                 });
 #pragma warning restore 612, 618
         }
