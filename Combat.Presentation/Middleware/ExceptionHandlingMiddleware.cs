@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Combat.Application.Exceptions;
+using Combat.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using ILogger = Serilog.ILogger;
@@ -40,6 +41,16 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
                 StatusCodes.Status409Conflict,
                 "Idempotency key conflict",
                 exception.Message
+            );
+        }
+        catch (FightRuleViolationException exception)
+        {
+            // An expected refusal of the rules, not an anomaly: logged by the handler.
+            await HandleProblemAsync(
+                context,
+                StatusCodes.Status409Conflict,
+                "Action refused",
+                exception.Reason
             );
         }
         catch (ExternalServiceUnavailableException exception)
