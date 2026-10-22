@@ -25,8 +25,16 @@ public sealed class GenerateMonsterCommandHandlerTests
         );
     }
 
-    [Fact]
-    public async Task Handle_NewRequest_GeneratesLevelAndScaledStats()
+    [Theory]
+    [InlineData(1, 1, 10)]
+    [InlineData(5, 3, 54)]
+    [InlineData(40, 1, 88)]
+    [InlineData(1, 4, 40)]
+    public async Task Handle_NewRequest_GeneratesLevelAndScaledStats(
+        int floor,
+        int playerCount,
+        int expectedStat
+    )
     {
         Guid dungeonRunId = Guid.NewGuid();
         Guid idempotencyKey = Guid.NewGuid();
@@ -43,36 +51,29 @@ public sealed class GenerateMonsterCommandHandlerTests
             .ReturnsAsync([definition]);
         _monsterRepository
             .Setup(repository =>
-                repository.AddOrGetByIdempotencyKeyAsync(
-                    It.IsAny<Monster>(),
-                    It.IsAny<CancellationToken>()
-                )
+                repository.AddAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>())
             )
-            .ReturnsAsync((Monster monster, CancellationToken _) => monster);
+            .Returns(Task.CompletedTask);
 
         GenerateMonsterResult result = await _handler.Handle(
             new GenerateMonsterCommand(
                 dungeonRunId,
                 idempotencyKey,
-                Floor: 5,
-                PlayerCount: 3,
+                Floor: floor,
+                PlayerCount: playerCount,
                 MonsterClass: MonsterClass.Ordinary
             ),
             CancellationToken.None
         );
 
         result.MonsterClass.Should().Be(MonsterClass.Ordinary);
-        result.Level.Should().Be(5);
-        result.BaseHealth.Should().Be(54);
-        result.BaseAttack.Should().Be(54);
-        result.BaseDefense.Should().Be(54);
-        result.BaseSpeed.Should().Be(54);
+        result.Level.Should().Be(floor);
+        result.BaseHealth.Should().Be(expectedStat);
+        result.BaseAttack.Should().Be(expectedStat);
+        result.BaseDefense.Should().Be(expectedStat);
+        result.BaseSpeed.Should().Be(expectedStat);
         _monsterRepository.Verify(
-            repository =>
-                repository.AddOrGetByIdempotencyKeyAsync(
-                    It.IsAny<Monster>(),
-                    It.IsAny<CancellationToken>()
-                ),
+            repository => repository.AddAsync(It.IsAny<Monster>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
     }

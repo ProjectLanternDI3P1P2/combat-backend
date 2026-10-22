@@ -19,3 +19,6 @@ appsettings.Local.json
 logs/
 *.log
 coverage.xml
+
+.opencode/workflow/
+.claude/skills/
