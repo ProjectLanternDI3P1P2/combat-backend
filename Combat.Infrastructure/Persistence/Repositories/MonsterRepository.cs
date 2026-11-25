@@ -1,7 +1,6 @@
 using Combat.Domain.Entities;
 using Combat.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace Combat.Infrastructure.Persistence.Repositories;
 
@@ -12,40 +11,32 @@ public sealed class MonsterRepository(CombatDbContext dbContext) : IMonsterRepos
         CancellationToken cancellationToken
     )
     {
+        if (dbContext.Database.IsRelational() && dbContext.Database.CurrentTransaction is not null)
+        {
+            // A row lock cannot protect a key that has not been inserted yet. Serialize
+            // generation for this key until the command transaction commits or rolls back.
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({idempotencyKey.ToString()}, 0))",
+                cancellationToken
+            );
+        }
+
+        Monster? pendingMonster = dbContext.Monsters.Local.SingleOrDefault(monster =>
+            monster.IdempotencyKey == idempotencyKey
+        );
+        if (pendingMonster is not null)
+        {
+            return pendingMonster;
+        }
+
         return await dbContext.Monsters.SingleOrDefaultAsync(
             monster => monster.IdempotencyKey == idempotencyKey,
             cancellationToken
         );
     }
 
-    public async Task<Monster> AddOrGetByIdempotencyKeyAsync(
-        Monster monster,
-        CancellationToken cancellationToken
-    )
+    public async Task AddAsync(Monster monster, CancellationToken cancellationToken)
     {
         await dbContext.Monsters.AddAsync(monster, cancellationToken);
-
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return monster;
-        }
-        catch (DbUpdateException exception)
-            when (exception.InnerException
-                    is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation }
-            )
-        {
-            dbContext.ChangeTracker.Clear();
-            Monster? existingMonster = await GetByIdempotencyKeyAsync(
-                monster.IdempotencyKey,
-                cancellationToken
-            );
-            if (existingMonster is null)
-            {
-                throw;
-            }
-
-            return existingMonster;
-        }
     }
 }

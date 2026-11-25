@@ -9,8 +9,5 @@ public interface IMonsterRepository
         CancellationToken cancellationToken
     );
 
-    Task<Monster> AddOrGetByIdempotencyKeyAsync(
-        Monster monster,
-        CancellationToken cancellationToken
-    );
+    Task AddAsync(Monster monster, CancellationToken cancellationToken);
 }
