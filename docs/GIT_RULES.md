@@ -78,11 +78,22 @@ Hooks can be skipped with `--no-verify`. CI runs the same checks and cannot be.
 | `Test / dotnet test` | yes |
 | `Build / dotnet build` | yes |
 | `Commitlint` | yes |
-| `Trivy Security Scan` | yes (reports, never fails) |
+| `Trivy Security Scan` | yes (fails on any CRITICAL vulnerability in the final image) |
 | `GitHub Actions audit` (zizmor) | yes |
 | `SonarQube Cloud scan` | **no**, skipped on Dependabot pull requests |
 
 `dev` requires branches to be up to date before merging.
+
+The Trivy check builds the final Linux/amd64 runtime image and scans both OS and
+application dependencies. Any CRITICAL finding fails the check, including findings
+without an available fix; HIGH findings alone do not block it. Image build and
+scanner errors also fail the check.
+
+CD uses the same build-and-scan workflow. Only a successful scan exports the image
+for the Harbor runner, which publishes that exact image without rebuilding it.
+Publication and GitOps promotion depend on the successful scan. Pull requests do
+not publish images or request promotion. This is a Combat-only pilot; delivery is
+local to this repository until the policy is adopted by the shared GitOps workflow.
 
 ## Releases
 

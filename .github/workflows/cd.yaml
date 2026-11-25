@@ -10,17 +10,114 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  delivery:
+  image:
     if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/dev'
     permissions:
       contents: read
       packages: read
-    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@b5ac372c8d41b074ab76d1de4a715a42f492ced4 # feat/argocd-delivery
+    uses: ./.github/workflows/_image.yaml
     with:
-      application: combat
-      image: registry.lantern.diiage/lantern/combat-backend
-    secrets:
-      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-      HARBOR_TOKEN: ${{ secrets.HARBOR_TOKEN }}
-      GITOPS_DISPATCH_TOKEN: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+      upload_image: true
+
+  # Combat-only pilot of the pinned shared delivery workflow. Publish the exact
+  # image that passed Trivy instead of rebuilding after the security gate.
+  delivery:
+    needs: image
+    runs-on: lantern-k3s-builders
+    env:
+      REGISTRY: registry.lantern.diiage
+      IMAGE: registry.lantern.diiage/lantern/combat-backend
+      APPLICATION: combat
+      GITOPS_REPOSITORY: ProjectLanternDI3P1P2/platform-gitops
+    steps:
+      - name: Compute immutable tags
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:12}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tags="${IMAGE}:${GITHUB_REF_NAME}"$'\n'"${IMAGE}:main-latest"
+            deploy_tag=""
+          else
+            deploy_tag="dev-${short_sha}"
+            tags="${IMAGE}:${deploy_tag}"$'\n'"${IMAGE}:dev-latest"
+          fi
+          {
+            echo "deploy_tag=${deploy_tag}"
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          driver: docker
+
+      - name: Download the scanned image from this run
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: combat-scanned-${{ github.run_id }}
+
+      - name: Load the scanned image
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -dc scanned-image.tar.gz | docker load
+          docker image inspect "combat-scanned:${GITHUB_SHA}" >/dev/null
+
+      - name: Log in to Harbor
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_TOKEN }}
+
+      - name: Publish only the scanned image
+        shell: bash
+        env:
+          TAGS: ${{ steps.image.outputs.tags }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            docker tag "combat-scanned:${GITHUB_SHA}" "${tag}"
+            docker push "${tag}"
+          done <<< "${TAGS}"
+
+      - name: Verify published image
+        shell: bash
+        env:
+          TAGS: ${{ steps.image.outputs.tags }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            docker buildx imagetools inspect "$tag" >/dev/null
+            echo "Verified ${tag}"
+          done <<< "${TAGS}"
+
+      - name: Request GitOps promotion
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DEPLOY_TAG: ${{ steps.image.outputs.deploy_tag }}
+        with:
+          github-token: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.GITOPS_REPOSITORY.split('/');
+            await github.rest.repos.createDispatchEvent({
+              owner,
+              repo,
+              event_type: 'promote-image',
+              client_payload: {
+                application: process.env.APPLICATION,
+                image: process.env.IMAGE,
+                tag: process.env.DEPLOY_TAG,
+                source_repository: context.repo.owner + '/' + context.repo.repo,
+                source_revision: context.sha
+              }
+            });
