@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@9d823620501406e8b7ffccba742e73ab4d04879e # Harbor 10.4.111.200:18443
+    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@2e775e5c4f62d74bdaecbce6c3636bf41af458ad # scan gate + cosign
     with:
       application: combat
       image: 10.4.111.200:18443/lantern/combat-backend
@@ -24,3 +24,5 @@ jobs:
       HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
       HARBOR_TOKEN: ${{ secrets.HARBOR_TOKEN }}
       GITOPS_DISPATCH_TOKEN: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+      COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+      COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
