@@ -5,37 +5,37 @@ ARG DOTNET_VERSION=10.0
 # ============================================================
 # 1. RESTORE
 # ============================================================
-FROM dhi/dotnet:10.0-sdk AS build
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS restore
 
 WORKDIR /src
 COPY NuGet.config ./
 
 # Copier uniquement les fichiers projet pour profiter
 # au maximum du cache Docker.
-COPY Dungeon.Presentation.slnx ./
+COPY Combat.Presentation.slnx ./
 
-COPY Dungeon.Contracts/Dungeon.Contracts.csproj \
-     Dungeon.Contracts/
+COPY Combat.Contracts/Combat.Contracts.csproj \
+     Combat.Contracts/
 
-COPY Dungeon.Domain/Dungeon.Domain.csproj \
-     Dungeon.Domain/
+COPY Combat.Domain/Combat.Domain.csproj \
+     Combat.Domain/
 
-COPY Dungeon.Application/Dungeon.Application.csproj \
-     Dungeon.Application/
+COPY Combat.Application/Combat.Application.csproj \
+     Combat.Application/
 
-COPY Dungeon.Infrastructure/Dungeon.Infrastructure.csproj \
-     Dungeon.Infrastructure/
+COPY Combat.Infrastructure/Combat.Infrastructure.csproj \
+     Combat.Infrastructure/
 
-COPY Dungeon.Presentation/Dungeon.Presentation.csproj \
-     Dungeon.Presentation/
+COPY Combat.Presentation/Combat.Presentation.csproj \
+     Combat.Presentation/
 
-COPY Dungeon.Test/Dungeon.Test.csproj \
-     Dungeon.Test/
+COPY Combat.Test/Combat.Test.csproj \
+     Combat.Test/
 
 # Cache NuGet BuildKit
 RUN --mount=type=cache,target=/root/.nuget/packages \
     --mount=type=secret,id=github_packages_credentials,env=NuGetPackageSourceCredentials_github \
-    dotnet restore Dungeon.Presentation.slnx
+    dotnet restore Combat.Presentation.slnx
 
 
 # ============================================================
@@ -46,7 +46,7 @@ FROM restore AS build
 COPY . .
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet build Dungeon.Presentation/Dungeon.Presentation.csproj \
+    dotnet build Combat.Presentation/Combat.Presentation.csproj \
     --configuration Release \
     --no-restore
 
@@ -57,7 +57,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 FROM build AS test
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet test Dungeon.Test/Dungeon.Test.csproj \
+    dotnet test Combat.Test/Combat.Test.csproj \
     --configuration Release \
     --no-restore \
     --verbosity normal \
@@ -70,7 +70,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 FROM build AS publish
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet publish Dungeon.Presentation/Dungeon.Presentation.csproj \
+    dotnet publish Combat.Presentation/Combat.Presentation.csproj \
     --configuration Release \
     --output /app/publish \
     --no-build \
@@ -101,4 +101,4 @@ COPY --from=publish --chown=$APP_UID:$APP_UID /app/publish ./
 # Exécution non-root
 USER $APP_UID
 
-ENTRYPOINT ["dotnet", "Dungeon.Presentation.dll"]
+ENTRYPOINT ["dotnet", "Combat.Presentation.dll"]
