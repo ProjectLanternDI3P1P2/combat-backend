@@ -2,11 +2,6 @@ name: Build and scan image
 
 on:
   workflow_call:
-    inputs:
-      upload_image:
-        description: Export the scanned image for publication in this workflow run.
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -42,7 +37,7 @@ jobs:
             github_packages_credentials=Username=${{ github.actor }};Password=${{ github.token }};ValidAuthenticationTypes=Basic
 
       # Also reject CRITICAL vulnerabilities for which no fix is available.
-      # Failure stops artifact export and the dependent publication job.
+      # Failure blocks the required pull request check.
       - name: Reject CRITICAL vulnerabilities in the final image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
@@ -56,20 +51,5 @@ jobs:
           exit-code: '1'
           ignore-unfixed: false
           format: table
-          # Do not save caches from pull requests that delivery could later consume.
+          # Avoid saving scanner caches from pull requests.
           cache: false
-
-      - name: Export the scanned image
-        if: inputs.upload_image
-        shell: bash
-        run: docker save "combat-scanned:${GITHUB_SHA}" | gzip -1 > scanned-image.tar.gz
-
-      - name: Upload the scanned image
-        if: inputs.upload_image
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: combat-scanned-${{ github.run_id }}
-          path: scanned-image.tar.gz
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
