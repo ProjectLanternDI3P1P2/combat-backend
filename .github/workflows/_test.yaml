@@ -39,3 +39,6 @@ jobs:
         env:
           COMBAT_TEST_DATABASE_CONNECTION: Host=localhost;Port=5432;Database=combat_test;Username=combat
         run: dotnet test --solution Combat.Presentation.slnx
+
+      - name: Verify production migration command against disposable PostgreSQL
+        run: bash .github/scripts/test-migration-command.sh
