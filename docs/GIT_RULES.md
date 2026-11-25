@@ -9,7 +9,7 @@ each rule are in the ADRs linked below; this page is the checklist.
 | --- | --- |
 | `dev` | Default branch. Every pull request targets it. |
 | `main` | Released code. Only receives the promotion pull request from `dev` and the release pull request from release-please. |
-| `feature/…`, `fix/…`, `chore/…`, `docs/…` | Working branches, created from `dev`. The prefix is a convention, not enforced. |
+| `feature/â€¦`, `fix/â€¦`, `chore/â€¦`, `docs/â€¦` | Working branches, created from `dev`. The prefix is a convention, not enforced. |
 
 Never push directly to `dev` or `main`: both are protected.
 
@@ -53,7 +53,7 @@ A `!` after the type, or a `BREAKING CHANGE:` footer, is a breaking change: majo
 bump. Hidden types alone never trigger a release.
 
 - Header at most 100 characters. Scope free. Subject case free.
-- Messages written by git itself (`Merge …`, `Revert "…"`, `fixup! …`) are not
+- Messages written by git itself (`Merge â€¦`, `Revert "â€¦"`, `fixup! â€¦`) are not
   checked.
 
 Examples: `feat(player): expose level over gRPC`, `fix: reject empty names`,
@@ -78,11 +78,22 @@ Hooks can be skipped with `--no-verify`. CI runs the same checks and cannot be.
 | `Test / dotnet test` | yes |
 | `Build / dotnet build` | yes |
 | `Commitlint` | yes |
-| `Trivy Security Scan` | yes (reports, never fails) |
+| `Trivy Security Scan` | yes (fails on any CRITICAL vulnerability in the final image) |
 | `GitHub Actions audit` (zizmor) | yes |
 | `SonarQube Cloud scan` | **no**, skipped on Dependabot pull requests |
 
 `dev` requires branches to be up to date before merging.
+
+The Trivy check builds the final Linux/amd64 runtime image and scans both OS and
+application dependencies. Any CRITICAL finding fails the check, including findings
+without an available fix; HIGH findings alone do not block it. Image build and
+scanner errors also fail the check.
+
+Delivery remains delegated to the pinned shared workflow in platform-gitops.
+The pull request scan does not publish or transfer an image to CD; delivery builds
+its own image. The Harbor scan gate, image signing and digest-based promotion
+from platform-gitops PR #67 require that PR to be validated and merged, followed
+by a separate caller update with the required Cosign secrets.
 
 ## Releases
 
