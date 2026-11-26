@@ -1,14 +1,23 @@
+using Combat.Application.Features.CombatUseCase;
+using Combat.Application.Features.CombatUseCase.JoinCombat;
+using Combat.Application.Features.CombatUseCase.SubmitCombatAction;
+using Combat.Application.Services;
 using Combat.Contracts.V1;
+using Combat.Infrastructure.ExternalServices.Player;
 using Combat.Infrastructure.Persistence;
 using FluentAssertions;
 using Grpc.Core;
 using Grpc.Net.Client;
+using MediatR;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using DomainActionType = Combat.Domain.Enums.FightActionType;
+using DomainResult = Combat.Domain.Enums.CombatResult;
+using DomainStatus = Combat.Domain.Enums.CombatStatus;
 
 namespace Combat.Test.Integration.Combats;
 
+/// <summary>Combat opened by Dungeon over gRPC, played and reported, on PostgreSQL.</summary>
 public sealed class CombatGrpcServiceIntegrationTests : IAsyncLifetime
 {
     private TestDatabase? database;
@@ -21,63 +30,51 @@ public sealed class CombatGrpcServiceIntegrationTests : IAsyncLifetime
         factory = new CombatWebApplicationFactory(database.ConnectionString);
         await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
         CombatDbContext context = scope.ServiceProvider.GetRequiredService<CombatDbContext>();
-        context.MonsterDefinitions.Add(
-            new Combat.Domain.Entities.MonsterDefinition
-            {
-                Id = Guid.Parse("0d89a169-cfa8-4c0f-8e27-59e1cedbb201"),
-                Name = "Cave Goblin",
-                Class = Combat.Domain.Enums.MonsterClass.Ordinary,
-                BaseHealth = 10,
-                BaseAttack = 10,
-                BaseDefense = 10,
-                BaseSpeed = 10,
-            }
+        context.MonsterDefinitions.AddRange(
+            Definition(
+                "0d89a169-cfa8-4c0f-8e27-59e1cedbb201",
+                "Cave Goblin",
+                global::Combat.Domain.Enums.MonsterClass.Ordinary,
+                12
+            ),
+            Definition(
+                "0d89a169-cfa8-4c0f-8e27-59e1cedbb207",
+                "Magma Behemoth",
+                global::Combat.Domain.Enums.MonsterClass.Boss,
+                60
+            )
         );
         await context.SaveChangesAsync();
     }
 
     [Fact]
-    public async Task CreateCombat_ValidRequest_ReturnsTheCombatAndItsParticipants()
+    public async Task CreateCombat_PackOfThreeMobs_ReturnsOneCombatWithThreeMonsters()
     {
-        CombatService.CombatServiceClient client = CreateClient();
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
+        CreateCombatRequest request = Request(monsters: 3);
 
-        CreateCombatResponse response = await client.CreateCombatAsync(
-            new CreateCombatRequest
-            {
-                SessionId = sessionId.ToString(),
-                EncounterId = encounterId.ToString(),
-                CommandId = commandId.ToString(),
-                EncounterType = EncounterType.Enemy,
-            },
-            cancellationToken: TestContext.Current.CancellationToken
-        );
+        CreateCombatResponse response = await CreateClient()
+            .CreateCombatAsync(request, cancellationToken: TestContext.Current.CancellationToken);
 
         response.CombatId.Should().NotBeEmpty();
-        response.SessionId.Should().Be(sessionId.ToString());
-        response.EncounterId.Should().Be(encounterId.ToString());
-        response.EncounterType.Should().Be(EncounterType.Enemy);
-        response.Status.Should().Be("Active");
-        response.Participants.Should().Contain(participant => participant.Type == "Hero");
-        response.Participants.Should().Contain(participant => participant.Type == "Monster");
+        response.RunId.Should().Be(request.RunId);
+        response.Status.Should().Be("active");
+        response.Participants.Should().ContainSingle(participant => participant.Type == "Hero");
+        response
+            .Participants.Where(participant => participant.Type == "Monster")
+            .Select(participant => participant.ExternalId)
+            .Should()
+            .BeEquivalentTo(request.Monsters.Select(monster => monster.ElementId));
+        response
+            .Participants.Where(participant => participant.Type == "Monster")
+            .Should()
+            .OnlyContain(participant => participant.SpriteKey == "cave-goblin");
     }
 
     [Fact]
     public async Task CreateCombat_ReplayedCommand_ReturnsTheSameCombat()
     {
         CombatService.CombatServiceClient client = CreateClient();
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        var request = new CreateCombatRequest
-        {
-            SessionId = sessionId.ToString(),
-            EncounterId = encounterId.ToString(),
-            CommandId = commandId.ToString(),
-            EncounterType = EncounterType.Enemy,
-        };
+        CreateCombatRequest request = Request(monsters: 2);
 
         CreateCombatResponse first = await client.CreateCombatAsync(
             request,
@@ -89,82 +86,181 @@ public sealed class CombatGrpcServiceIntegrationTests : IAsyncLifetime
         );
 
         second.CombatId.Should().Be(first.CombatId);
+        second.Participants.Should().HaveCount(first.Participants.Count);
     }
 
     [Fact]
-    public async Task CreateCombat_InvalidSessionId_ReturnsInvalidArgument()
+    public async Task CreateCombat_ReusedCommandIdWithAnotherPack_ReturnsAlreadyExists()
     {
         CombatService.CombatServiceClient client = CreateClient();
-
-        RpcException exception = await Assert.ThrowsAsync<RpcException>(async () =>
-            await client.CreateCombatAsync(
-                new CreateCombatRequest
-                {
-                    SessionId = "not-a-uuid",
-                    EncounterId = Guid.NewGuid().ToString(),
-                    CommandId = Guid.NewGuid().ToString(),
-                    EncounterType = EncounterType.Enemy,
-                },
-                cancellationToken: TestContext.Current.CancellationToken
-            )
-        );
-
-        exception.StatusCode.Should().Be(StatusCode.InvalidArgument);
-    }
-
-    [Fact]
-    public async Task CreateCombat_UnknownEncounterType_ReturnsInvalidArgument()
-    {
-        CombatService.CombatServiceClient client = CreateClient();
-
-        RpcException exception = await Assert.ThrowsAsync<RpcException>(async () =>
-            await client.CreateCombatAsync(
-                new CreateCombatRequest
-                {
-                    SessionId = Guid.NewGuid().ToString(),
-                    EncounterId = Guid.NewGuid().ToString(),
-                    CommandId = Guid.NewGuid().ToString(),
-                    EncounterType = EncounterType.Unspecified,
-                },
-                cancellationToken: TestContext.Current.CancellationToken
-            )
-        );
-
-        exception.StatusCode.Should().Be(StatusCode.InvalidArgument);
-    }
-
-    [Fact]
-    public async Task CreateCombat_ReusedCommandIdWithOtherParameters_ReturnsAlreadyExists()
-    {
-        CombatService.CombatServiceClient client = CreateClient();
-        Guid sessionId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
+        CreateCombatRequest request = Request(monsters: 1);
         await client.CreateCombatAsync(
-            new CreateCombatRequest
-            {
-                SessionId = sessionId.ToString(),
-                EncounterId = Guid.NewGuid().ToString(),
-                CommandId = commandId.ToString(),
-                EncounterType = EncounterType.Enemy,
-            },
+            request,
             cancellationToken: TestContext.Current.CancellationToken
         );
+        CreateCombatRequest other = request.Clone();
+        other.Monsters.Clear();
+        other.Monsters.Add(new EncounterMonster { ElementId = Guid.NewGuid().ToString() });
 
         RpcException exception = await Assert.ThrowsAsync<RpcException>(async () =>
             await client.CreateCombatAsync(
-                new CreateCombatRequest
-                {
-                    SessionId = sessionId.ToString(),
-                    EncounterId = Guid.NewGuid().ToString(),
-                    CommandId = commandId.ToString(),
-                    EncounterType = EncounterType.Enemy,
-                },
+                other,
                 cancellationToken: TestContext.Current.CancellationToken
             )
         );
 
         exception.StatusCode.Should().Be(StatusCode.AlreadyExists);
     }
+
+    [Fact]
+    public async Task CreateCombat_NoMonster_ReturnsInvalidArgument()
+    {
+        RpcException exception = await Assert.ThrowsAsync<RpcException>(async () =>
+            await CreateClient()
+                .CreateCombatAsync(
+                    Request(monsters: 0),
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
+        );
+
+        exception.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Fact]
+    public async Task CreateCombat_UnknownHero_ReturnsNotFound()
+    {
+        CreateCombatRequest request = Request(monsters: 1);
+        request.Participants[0].HeroId = Guid.NewGuid().ToString();
+
+        RpcException exception = await Assert.ThrowsAsync<RpcException>(async () =>
+            await CreateClient()
+                .CreateCombatAsync(
+                    request,
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
+        );
+
+        exception.StatusCode.Should().Be(StatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateCombat_InvalidSessionId_ReturnsInvalidArgument()
+    {
+        CreateCombatRequest request = Request(monsters: 1);
+        request.SessionId = "not-a-uuid";
+
+        RpcException exception = await Assert.ThrowsAsync<RpcException>(async () =>
+            await CreateClient()
+                .CreateCombatAsync(
+                    request,
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
+        );
+
+        exception.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Fact]
+    public async Task Combat_PlayedUntilTheEnd_IsReportedToDungeonOnce()
+    {
+        CreateCombatRequest request = Request(monsters: 1);
+        CreateCombatResponse created = await CreateClient()
+            .CreateCombatAsync(request, cancellationToken: TestContext.Current.CancellationToken);
+        Guid combatId = Guid.Parse(created.CombatId);
+
+        CombatView view = await PlayUntilTheEndAsync(combatId);
+
+        view.Status.Should().Be(DomainStatus.Completed);
+        view.Result.Should().BeOneOf(DomainResult.Victory, DomainResult.Defeat);
+        await using AsyncServiceScope scope = factory!.Services.CreateAsyncScope();
+        ICombatResultReporter reporter =
+            scope.ServiceProvider.GetRequiredService<ICombatResultReporter>();
+        (await reporter.ReportAsync(combatId, TestContext.Current.CancellationToken))
+            .Should()
+            .BeTrue();
+        (await reporter.ReportAsync(combatId, TestContext.Current.CancellationToken))
+            .Should()
+            .BeTrue();
+        factory
+            .DungeonResults.Reports.Where(report => report.CombatId == combatId)
+            .Should()
+            .ContainSingle()
+            .Which.EncounterId.Should()
+            .Be(Guid.Parse(request.EncounterId));
+    }
+
+    private async Task<CombatView> PlayUntilTheEndAsync(Guid combatId)
+    {
+        await using AsyncServiceScope joinScope = factory!.Services.CreateAsyncScope();
+        CombatView view = await joinScope
+            .ServiceProvider.GetRequiredService<ISender>()
+            .Send(new JoinCombatCommand(combatId), TestContext.Current.CancellationToken);
+        for (int turn = 0; turn < 100 && view.Status == DomainStatus.Active; turn++)
+        {
+            CombatFighterView monster = view.Fighters.First(fighter =>
+                fighter.Type == global::Combat.Domain.Enums.FighterType.Monster
+                && fighter.State == global::Combat.Domain.Enums.FighterState.Active
+            );
+            await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
+            CombatActionResult result = await scope
+                .ServiceProvider.GetRequiredService<ISender>()
+                .Send(
+                    new SubmitCombatActionCommand(
+                        combatId,
+                        Guid.NewGuid(),
+                        view.ActiveFighterId!.Value,
+                        DomainActionType.Attack,
+                        monster.FighterId,
+                        null
+                    ),
+                    TestContext.Current.CancellationToken
+                );
+            view = result.Combat;
+        }
+
+        return view;
+    }
+
+    private static CreateCombatRequest Request(int monsters)
+    {
+        var request = new CreateCombatRequest
+        {
+            SessionId = Guid.NewGuid().ToString(),
+            EncounterId = Guid.NewGuid().ToString(),
+            CommandId = Guid.NewGuid().ToString(),
+            EncounterType = EncounterType.Enemy,
+            RunId = Guid.NewGuid().ToString(),
+            Floor = 1,
+            RoomId = 4,
+        };
+        request.Participants.Add(
+            new EncounterParticipant { HeroId = MockHeroCatalog.WarriorHeroId.ToString() }
+        );
+        for (int index = 0; index < monsters; index++)
+        {
+            request.Monsters.Add(new EncounterMonster { ElementId = Guid.NewGuid().ToString() });
+        }
+
+        return request;
+    }
+
+    private static global::Combat.Domain.Entities.MonsterDefinition Definition(
+        string id,
+        string name,
+        global::Combat.Domain.Enums.MonsterClass monsterClass,
+        int stat
+    ) =>
+        new()
+        {
+            Id = Guid.Parse(id),
+            Name = name,
+            Class = monsterClass,
+            ImageUrl = $"/assets/monsters/{name.ToLowerInvariant().Replace(' ', '-')}.png",
+            BaseHealth = stat,
+            BaseAttack = stat,
+            BaseDefense = 2,
+            BaseSpeed = 5,
+        };
 
     private CombatService.CombatServiceClient CreateClient()
     {

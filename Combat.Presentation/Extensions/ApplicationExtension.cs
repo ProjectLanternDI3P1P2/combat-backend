@@ -1,3 +1,4 @@
+using Combat.Presentation.Hubs;
 using Combat.Presentation.Middleware;
 using Scalar.AspNetCore;
 
@@ -21,6 +22,7 @@ public static class ApplicationExtension
 
         app.MapControllers();
         app.MapGrpcServices();
+        app.MapHub<CombatHub>(CombatHub.Route);
         app.MapHealthChecks("/health/live");
         app.MapHealthChecks("/health/ready");
 

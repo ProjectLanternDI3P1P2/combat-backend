@@ -3,6 +3,9 @@ using Combat.Contracts.V1;
 using Combat.Domain.ValueObjects;
 using Grpc.Core;
 using MediatR;
+using AppMonster = Combat.Application.Features.CombatUseCase.CreateCombat.EncounterMonster;
+using AppParticipant = Combat.Application.Features.CombatUseCase.CreateCombat.EncounterParticipant;
+using ContractAbility = Combat.Contracts.V1.CombatAbility;
 using ContractEncounterType = Combat.Contracts.V1.EncounterType;
 using DomainEncounterType = Combat.Domain.Enums.EncounterType;
 using ILogger = Serilog.ILogger;
@@ -25,9 +28,43 @@ public sealed class CombatGrpcService(IMediator mediator, ILogger logger)
         Guid encounterId = ParseGuid(request.EncounterId, "encounter_id");
         Guid commandId = ParseGuid(request.CommandId, "command_id");
         DomainEncounterType encounterType = ParseEncounterType(request.EncounterType);
+        Guid runId = ParseGuid(request.RunId, "run_id");
+        List<AppParticipant> participants =
+        [
+            .. request.Participants.Select(participant => new AppParticipant(
+                ParseGuid(participant.HeroId, "participants.hero_id"),
+                participant.HasCurrentHp ? participant.CurrentHp : null,
+                participant.HasCurrentMana ? participant.CurrentMana : null
+            )),
+        ];
+        List<AppMonster> monsters =
+        [
+            .. request.Monsters.Select(monster => new AppMonster(
+                ParseGuid(monster.ElementId, "monsters.element_id"),
+                monster.IsBoss
+            )),
+        ];
+
+        logger.Information(
+            "gRPC combat creation requested for run {RunId}, encounter {EncounterId}: {HeroCount} hero(s), {MonsterCount} monster(s).",
+            runId,
+            encounterId,
+            participants.Count,
+            monsters.Count
+        );
 
         CreateCombatResult result = await mediator.Send(
-            new CreateCombatCommand(sessionId, encounterId, commandId, encounterType),
+            new CreateCombatCommand(
+                sessionId,
+                encounterId,
+                commandId,
+                encounterType,
+                runId,
+                request.Floor,
+                request.RoomId,
+                participants,
+                monsters
+            ),
             context.CancellationToken
         );
 
@@ -43,7 +80,9 @@ public sealed class CombatGrpcService(IMediator mediator, ILogger logger)
             SessionId = result.SessionId.ToString(),
             EncounterId = result.EncounterId.ToString(),
             EncounterType = ToContractEncounterType(result.EncounterType),
-            Status = result.Status.ToString(),
+            Status =
+                result.Status == Combat.Domain.Enums.CombatStatus.Completed ? "finished" : "active",
+            RunId = result.RunId.ToString(),
         };
 
         foreach (CombatParticipantResult participant in result.Participants)
@@ -63,17 +102,21 @@ public sealed class CombatGrpcService(IMediator mediator, ILogger logger)
                 Defense = participant.Defense,
                 Speed = participant.Speed,
                 State = participant.State.ToString(),
+                ClassCode = participant.Visual.ClassCode ?? string.Empty,
+                SpriteKey = participant.Visual.SpriteKey ?? string.Empty,
+                IsBoss = participant.Visual.IsBoss,
             };
 
             foreach (FighterAbility ability in participant.Abilities)
             {
                 contractParticipant.Abilities.Add(
-                    new CombatAbility
+                    new ContractAbility
                     {
-                        AbilityId = ability.AbilityId.ToString(),
+                        AbilityId = ability.Code,
                         Name = ability.Name,
                         ManaCost = ability.ManaCost,
                         TargetType = ability.TargetType,
+                        Power = ability.Power,
                     }
                 );
             }

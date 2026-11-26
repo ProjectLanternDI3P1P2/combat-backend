@@ -1,3 +1,4 @@
+using Combat.Presentation.BackgroundServices;
 using Combat.Presentation.Extensions.LogExtension;
 using Combat.Presentation.Grpc.Interceptors;
 using Combat.Presentation.Middleware;
@@ -34,6 +35,8 @@ public static class BuilderExtension
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi();
         builder.Services.AddHealthChecks();
+        builder.Services.AddSignalR();
+        builder.Services.AddHostedService<PendingCombatReportsWorker>();
         builder.Services.AddGrpc(options =>
         {
             options.Interceptors.Add<CorrelationIdInterceptor>();
