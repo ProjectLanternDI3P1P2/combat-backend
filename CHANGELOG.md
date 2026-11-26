@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/v1.1.1...v1.2.0) (2026-11-26)
+
+
+### Added
+
+* **migrations:** add migration-only command for GitOps jobs ([86d616e](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/86d616e18e4e9279aef15c3bfe5b2b19377f5c11))
+
 ## [1.1.1](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/v1.1.0...v1.1.1) (2026-11-25)
 
 
