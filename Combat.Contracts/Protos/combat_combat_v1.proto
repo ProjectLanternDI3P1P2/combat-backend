@@ -29,6 +29,31 @@ message CreateCombatRequest {
   string command_id = 3;
   // Kind of encounter reported by the Dungeon service.
   EncounterType encounter_type = 4;
+  // RFC 4122 textual UUID of the dungeon run.
+  string run_id = 5;
+  // 1-based floor of the encounter (Dungeon stores it 0-based).
+  int32 floor = 6;
+  int32 room_id = 7;
+  // Heroes of the party, at least one. Player stays the source of their data.
+  repeated EncounterParticipant participants = 8;
+  // One entry per engaged mob, at least one. Dungeon mobs only describe a way of
+  // moving: Combat picks the monster each one becomes, the same for the same mob.
+  repeated EncounterMonster monsters = 9;
+}
+
+message EncounterParticipant {
+  // RFC 4122 textual UUID of the hero, owned by Player.
+  string hero_id = 1;
+  // Hit points and mana the hero still has in the run. Absent: full.
+  optional int32 current_hp = 2;
+  optional int32 current_mana = 3;
+}
+
+message EncounterMonster {
+  // RFC 4122 textual UUID of the mob (dungeon element). It tells Dungeon which mob
+  // was defeated, and it seeds the choice of the monster.
+  string element_id = 1;
+  bool is_boss = 2;
 }
 
 message CreateCombatResponse {
@@ -38,6 +63,8 @@ message CreateCombatResponse {
   EncounterType encounter_type = 4;
   string status = 5;
   repeated CombatParticipant participants = 6;
+  // RFC 4122 textual UUID of the dungeon run.
+  string run_id = 7;
 }
 
 // Temporary combat state of a participant, valid for the duration of the combat.
@@ -60,13 +87,21 @@ message CombatParticipant {
   string state = 13;
   repeated CombatAbility abilities = 14;
   repeated CombatEffect effects = 15;
+  // Hero: Player class code; monster: empty.
+  string class_code = 16;
+  // Monster: sprite key of its definition, e.g. "cave-goblin"; hero: empty.
+  string sprite_key = 17;
+  bool is_boss = 18;
 }
 
 message CombatAbility {
+  // Ability code, e.g. "warrior-strike".
   string ability_id = 1;
   string name = 2;
   int32 mana_cost = 3;
   string target_type = 4;
+  // Percentage of the attack (offensive) or of the maximum HP (healing).
+  int32 power = 5;
 }
 
 // Buff, debuff or status effect carried by the participant.
