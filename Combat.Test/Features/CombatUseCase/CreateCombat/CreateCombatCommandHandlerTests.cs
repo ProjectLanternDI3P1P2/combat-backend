@@ -1,7 +1,6 @@
 using Combat.Application.Exceptions;
 using Combat.Application.Features.CombatUseCase.CreateCombat;
 using Combat.Application.Models;
-using Combat.Application.Ports;
 using Combat.Application.Services;
 using Combat.Domain.Entities;
 using Combat.Domain.Enums;
@@ -17,53 +16,177 @@ namespace Combat.Test.Features.CombatUseCase.CreateCombat;
 
 public sealed class CreateCombatCommandHandlerTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 11, 26, 10, 0, 0, TimeSpan.Zero);
+
     private readonly Mock<ICombatInstanceRepository> _combatRepository = new();
-    private readonly Mock<ISessionHeroesClient> _sessionHeroesClient = new();
-    private readonly Mock<IEncounterContextClient> _encounterContextClient = new();
     private readonly Mock<IHeroFighterInitializer> _heroFighterInitializer = new();
     private readonly Mock<IMonsterDefinitionRepository> _monsterDefinitionRepository = new();
     private readonly CreateCombatCommandHandler _handler;
+    private CombatInstance? _added;
 
     public CreateCombatCommandHandlerTests()
     {
         _handler = new CreateCombatCommandHandler(
             _combatRepository.Object,
-            _sessionHeroesClient.Object,
-            _encounterContextClient.Object,
             _heroFighterInitializer.Object,
             _monsterDefinitionRepository.Object,
             Options.Create(new MonsterGenerationOptions()),
+            Options.Create(new CombatOptions { TurnDurationSeconds = 30 }),
+            new MiddleDice(),
             new FixedClock(),
             Mock.Of<ILogger>()
+        );
+        _combatRepository
+            .Setup(repository =>
+                repository.AddAsync(It.IsAny<CombatInstance>(), It.IsAny<CancellationToken>())
+            )
+            .Callback<CombatInstance, CancellationToken>((combat, _) => _added = combat)
+            .Returns(Task.CompletedTask);
+        _heroFighterInitializer
+            .Setup(initializer =>
+                initializer.InitializeAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                (Guid heroId, int? hp, int? mana, CancellationToken _) => HeroFighter(heroId, hp)
+            );
+        _monsterDefinitionRepository
+            .Setup(repository =>
+                repository.GetByClassAsync(MonsterClass.Ordinary, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync([
+                Definition("Cave Goblin", MonsterClass.Ordinary),
+                Definition("Moss Wolf", MonsterClass.Ordinary),
+            ]);
+        _monsterDefinitionRepository
+            .Setup(repository =>
+                repository.GetByClassAsync(MonsterClass.Boss, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync([Definition("Crypt Sovereign", MonsterClass.Boss)]);
+    }
+
+    [Fact]
+    public async Task Handle_PackOfThreeMobs_CreatesOneCombatWithThreeMonsters()
+    {
+        CreateCombatCommand command = Command(monsters: 3);
+
+        CreateCombatResult result = await _handler.Handle(
+            command,
+            TestContext.Current.CancellationToken
+        );
+
+        result.RunId.Should().Be(command.RunId);
+        result.Status.Should().Be(CombatStatus.Active);
+        result.Participants.Count(p => p.Type == FighterType.Hero).Should().Be(1);
+        result
+            .Participants.Where(p => p.Type == FighterType.Monster)
+            .Select(p => p.ExternalId)
+            .Should()
+            .BeEquivalentTo(command.Monsters.Select(m => m.ElementId));
+        _added.Should().NotBeNull();
+        _added!.Turn.Should().BeGreaterThan(0, "the combat starts on its first turn");
+        _added.TurnDeadline.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Handle_SingleMob_CreatesACombatWithOneMonster()
+    {
+        CreateCombatResult result = await _handler.Handle(
+            Command(monsters: 1),
+            TestContext.Current.CancellationToken
+        );
+
+        result.Participants.Count(p => p.Type == FighterType.Monster).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_SameMobTwice_BecomesTheSameMonster()
+    {
+        Guid elementId = Guid.NewGuid();
+        CreateCombatResult first = await _handler.Handle(
+            Command(elementIds: [elementId]),
+            TestContext.Current.CancellationToken
+        );
+        CreateCombatResult second = await _handler.Handle(
+            Command(elementIds: [elementId]),
+            TestContext.Current.CancellationToken
+        );
+
+        Monster(first).Name.Should().Be(Monster(second).Name);
+        Monster(first).Visual.SpriteKey.Should().Be(Monster(second).Visual.SpriteKey);
+    }
+
+    [Fact]
+    public async Task Handle_MonsterStats_FollowTheFloorAndPartyScaling()
+    {
+        CreateCombatResult result = await _handler.Handle(
+            Command(monsters: 1, floor: 3),
+            TestContext.Current.CancellationToken
+        );
+
+        // Base 20, +2 per floor above the first, one player.
+        Monster(result).MaxHp.Should().Be(24);
+    }
+
+    [Fact]
+    public async Task Handle_Boss_UsesABossDefinitionFlaggedAsBoss()
+    {
+        CreateCombatCommand command = Command(monsters: 0) with
+        {
+            EncounterType = EncounterType.Boss,
+            Monsters = [new EncounterMonster(Guid.NewGuid(), IsBoss: true)],
+        };
+
+        CreateCombatResult result = await _handler.Handle(
+            command,
+            TestContext.Current.CancellationToken
+        );
+
+        Monster(result).Name.Should().Be("Crypt Sovereign");
+        Monster(result).Visual.IsBoss.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_RunHitPoints_AreGivenToTheHeroInitializer()
+    {
+        CreateCombatCommand command = Command(monsters: 1) with
+        {
+            Participants = [new EncounterParticipant(Guid.NewGuid(), 42, 7)],
+        };
+
+        await _handler.Handle(command, TestContext.Current.CancellationToken);
+
+        _heroFighterInitializer.Verify(initializer =>
+            initializer.InitializeAsync(
+                command.Participants[0].HeroId,
+                42,
+                7,
+                It.IsAny<CancellationToken>()
+            )
         );
     }
 
     [Fact]
-    public async Task Handle_NewRequest_CreatesACombatWithHeroesAndMonsters()
+    public async Task Handle_ReplayedCommand_ReturnsTheExistingCombat()
     {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        SetupHappyPath(
-            sessionId,
-            encounterId,
-            commandId,
-            [MockHeroCatalogIds.Warrior, MockHeroCatalogIds.Mage]
-        );
+        CreateCombatCommand command = Command(monsters: 2);
+        await _handler.Handle(command, TestContext.Current.CancellationToken);
+        _combatRepository
+            .Setup(repository =>
+                repository.GetByCommandIdAsync(command.CommandId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(_added);
 
-        CreateCombatResult result = await _handler.Handle(
-            new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Enemy),
+        CreateCombatResult replay = await _handler.Handle(
+            command,
             TestContext.Current.CancellationToken
         );
 
-        result.CombatId.Should().NotBeEmpty();
-        result.SessionId.Should().Be(sessionId);
-        result.EncounterId.Should().Be(encounterId);
-        result.EncounterType.Should().Be(EncounterType.Enemy);
-        result.Status.Should().Be(CombatStatus.Active);
-        result.Participants.Should().HaveCount(4);
-        result.Participants.Count(p => p.Type == FighterType.Hero).Should().Be(2);
-        result.Participants.Count(p => p.Type == FighterType.Monster).Should().Be(2);
+        replay.CombatId.Should().Be(_added!.CombatId);
         _combatRepository.Verify(
             repository =>
                 repository.AddAsync(It.IsAny<CombatInstance>(), It.IsAny<CancellationToken>()),
@@ -72,77 +195,22 @@ public sealed class CreateCombatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NewRequest_InitializesEveryParticipantWithItsCombatState()
+    public async Task Handle_ReusedCommandIdWithAnotherPack_ThrowsConflict()
     {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        SetupHappyPath(sessionId, encounterId, commandId, [MockHeroCatalogIds.Warrior]);
-
-        CreateCombatResult result = await _handler.Handle(
-            new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Enemy),
-            TestContext.Current.CancellationToken
-        );
-
-        CombatParticipantResult hero = result.Participants.Single(p => p.Type == FighterType.Hero);
-        hero.CurrentHp.Should().Be(100);
-        hero.MaxHp.Should().Be(100);
-        hero.CurrentMana.Should().Be(50);
-        hero.MaxMana.Should().Be(50);
-        hero.Attack.Should().Be(10);
-        hero.Defense.Should().Be(5);
-        hero.Speed.Should().Be(8);
-        hero.Abilities.Should().ContainSingle();
-        hero.Effects.Should().BeEmpty();
-        hero.State.Should().Be(FighterState.Active);
-    }
-
-    [Fact]
-    public async Task Handle_ReplayedCommand_ReturnsTheExistingCombat()
-    {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        CombatInstance existing = CreateExistingCombat(sessionId, encounterId, commandId);
+        CreateCombatCommand command = Command(monsters: 2);
+        await _handler.Handle(command, TestContext.Current.CancellationToken);
         _combatRepository
             .Setup(repository =>
-                repository.GetByCommandIdAsync(commandId, It.IsAny<CancellationToken>())
+                repository.GetByCommandIdAsync(command.CommandId, It.IsAny<CancellationToken>())
             )
-            .ReturnsAsync(existing);
-
-        CreateCombatResult result = await _handler.Handle(
-            new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Enemy),
-            TestContext.Current.CancellationToken
-        );
-
-        result.CombatId.Should().Be(existing.CombatId);
-        _combatRepository.Verify(
-            repository =>
-                repository.AddAsync(It.IsAny<CombatInstance>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
-        _sessionHeroesClient.Verify(
-            client => client.GetHeroIdsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
-    }
-
-    [Fact]
-    public async Task Handle_ReusedCommandIdWithDifferentParameters_ThrowsConflict()
-    {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        CombatInstance existing = CreateExistingCombat(sessionId, encounterId, commandId);
-        _combatRepository
-            .Setup(repository =>
-                repository.GetByCommandIdAsync(commandId, It.IsAny<CancellationToken>())
-            )
-            .ReturnsAsync(existing);
+            .ReturnsAsync(_added);
 
         Func<Task> act = () =>
             _handler.Handle(
-                new CreateCombatCommand(sessionId, Guid.NewGuid(), commandId, EncounterType.Enemy),
+                command with
+                {
+                    Monsters = [new EncounterMonster(Guid.NewGuid(), false)],
+                },
                 TestContext.Current.CancellationToken
             );
 
@@ -150,79 +218,23 @@ public sealed class CreateCombatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_SameEncounterWithAnotherCommand_ReturnsTheExistingCombat()
-    {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        CombatInstance existing = CreateExistingCombat(sessionId, encounterId, Guid.NewGuid());
-        _combatRepository
-            .Setup(repository =>
-                repository.GetByEncounterIdAsync(encounterId, It.IsAny<CancellationToken>())
-            )
-            .ReturnsAsync(existing);
-
-        CreateCombatResult result = await _handler.Handle(
-            new CreateCombatCommand(sessionId, encounterId, Guid.NewGuid(), EncounterType.Enemy),
-            TestContext.Current.CancellationToken
-        );
-
-        result.CombatId.Should().Be(existing.CombatId);
-        _combatRepository.Verify(
-            repository =>
-                repository.AddAsync(It.IsAny<CombatInstance>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
-    }
-
-    [Fact]
-    public async Task Handle_SessionWithoutHero_Throws()
-    {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        _sessionHeroesClient
-            .Setup(client => client.GetHeroIdsAsync(sessionId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-
-        Func<Task> act = () =>
-            _handler.Handle(
-                new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Enemy),
-                TestContext.Current.CancellationToken
-            );
-
-        await act.Should().ThrowAsync<NoCombatParticipantsException>();
-        _combatRepository.Verify(
-            repository =>
-                repository.AddAsync(It.IsAny<CombatInstance>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
-    }
-
-    [Fact]
     public async Task Handle_HeroThatCannotBeInitialized_FailsTheWholeCombat()
     {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        SetupHappyPath(
-            sessionId,
-            encounterId,
-            commandId,
-            [MockHeroCatalogIds.Warrior, MockHeroCatalogIds.Mage]
-        );
         _heroFighterInitializer
             .Setup(initializer =>
-                initializer.InitializeAsync(MockHeroCatalogIds.Mage, It.IsAny<CancellationToken>())
+                initializer.InitializeAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<CancellationToken>()
+                )
             )
-            .ThrowsAsync(new HeroNotFoundException(MockHeroCatalogIds.Mage));
+            .ThrowsAsync(new ExternalServiceUnavailableException("Player"));
 
         Func<Task> act = () =>
-            _handler.Handle(
-                new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Enemy),
-                TestContext.Current.CancellationToken
-            );
+            _handler.Handle(Command(monsters: 1), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<HeroNotFoundException>();
+        await act.Should().ThrowAsync<ExternalServiceUnavailableException>();
         _combatRepository.Verify(
             repository =>
                 repository.AddAsync(It.IsAny<CombatInstance>(), It.IsAny<CancellationToken>()),
@@ -231,12 +243,8 @@ public sealed class CreateCombatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_EncounterWithoutMonsterDefinition_Throws()
+    public async Task Handle_NoDefinitionForTheClass_Throws()
     {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        SetupHappyPath(sessionId, encounterId, commandId, [MockHeroCatalogIds.Warrior]);
         _monsterDefinitionRepository
             .Setup(repository =>
                 repository.GetByClassAsync(MonsterClass.Ordinary, It.IsAny<CancellationToken>())
@@ -244,152 +252,76 @@ public sealed class CreateCombatCommandHandlerTests
             .ReturnsAsync([]);
 
         Func<Task> act = () =>
-            _handler.Handle(
-                new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Enemy),
-                TestContext.Current.CancellationToken
-            );
+            _handler.Handle(Command(monsters: 1), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidCombatEncounterException>();
     }
 
-    [Fact]
-    public async Task Handle_BossEncounter_GeneratesABossMonster()
-    {
-        Guid sessionId = Guid.NewGuid();
-        Guid encounterId = Guid.NewGuid();
-        Guid commandId = Guid.NewGuid();
-        SetupHappyPath(sessionId, encounterId, commandId, [MockHeroCatalogIds.Warrior]);
-        _encounterContextClient
-            .Setup(client =>
-                client.GetAsync(sessionId, EncounterType.Boss, It.IsAny<CancellationToken>())
-            )
-            .ReturnsAsync(new EncounterContext(EncounterType.Boss, 1, 5));
-        _monsterDefinitionRepository
-            .Setup(repository =>
-                repository.GetByClassAsync(MonsterClass.Boss, It.IsAny<CancellationToken>())
-            )
-            .ReturnsAsync([
-                new MonsterDefinition
-                {
-                    Id = Guid.NewGuid(),
-                    Name = "Abyssal Tyrant",
-                    Class = MonsterClass.Boss,
-                    BaseHealth = 20,
-                    BaseAttack = 20,
-                    BaseDefense = 20,
-                    BaseSpeed = 20,
-                },
-            ]);
+    private static CombatParticipantResult Monster(CreateCombatResult result) =>
+        result.Participants.First(p => p.Type == FighterType.Monster);
 
-        CreateCombatResult result = await _handler.Handle(
-            new CreateCombatCommand(sessionId, encounterId, commandId, EncounterType.Boss),
-            TestContext.Current.CancellationToken
-        );
-
-        CombatParticipantResult monster = result.Participants.Single(p =>
-            p.Type == FighterType.Monster
-        );
-        monster.Name.Should().Be("Abyssal Tyrant");
-        monster.Level.Should().Be(5);
-        // Base health 20 plus 4 floors of +2, for a single player.
-        monster.MaxHp.Should().Be(28);
-    }
-
-    private void SetupHappyPath(
-        Guid sessionId,
-        Guid encounterId,
-        Guid commandId,
-        IReadOnlyList<Guid> heroIds
-    )
-    {
-        _sessionHeroesClient
-            .Setup(client => client.GetHeroIdsAsync(sessionId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(heroIds);
-        _encounterContextClient
-            .Setup(client =>
-                client.GetAsync(sessionId, EncounterType.Enemy, It.IsAny<CancellationToken>())
-            )
-            .ReturnsAsync(new EncounterContext(EncounterType.Enemy, 2, 1));
-        _monsterDefinitionRepository
-            .Setup(repository =>
-                repository.GetByClassAsync(MonsterClass.Ordinary, It.IsAny<CancellationToken>())
-            )
-            .ReturnsAsync([
-                new MonsterDefinition
-                {
-                    Id = Guid.NewGuid(),
-                    Name = "Cave Goblin",
-                    Class = MonsterClass.Ordinary,
-                    BaseHealth = 10,
-                    BaseAttack = 10,
-                    BaseDefense = 10,
-                    BaseSpeed = 10,
-                },
-            ]);
-
-        foreach (Guid heroId in heroIds)
-        {
-            _heroFighterInitializer
-                .Setup(initializer =>
-                    initializer.InitializeAsync(heroId, It.IsAny<CancellationToken>())
-                )
-                .ReturnsAsync(CreateHeroFighter(heroId));
-        }
-    }
-
-    private static Fighter CreateHeroFighter(Guid heroId)
-    {
-        var initialState = new FighterInitialState(
-            currentHp: 100,
-            maxHp: 100,
-            currentMana: 50,
-            maxMana: 50,
-            stats: new FighterStats(10, 5, 8),
-            abilities: [new FighterAbility(Guid.NewGuid(), "Strike", 5, "SingleEnemy")],
-            items: []
-        );
-
-        return Fighter.CreateHero(heroId, "Hero", 1, initialState, false);
-    }
-
-    private static CombatInstance CreateExistingCombat(
-        Guid sessionId,
-        Guid encounterId,
-        Guid commandId
-    )
-    {
-        var initialState = new FighterInitialState(
-            currentHp: 10,
-            maxHp: 10,
-            currentMana: 0,
-            maxMana: 0,
-            stats: new FighterStats(1, 1, 1),
-            abilities: [],
-            items: []
-        );
-
-        return CombatInstance.Create(
+    private static CreateCombatCommand Command(
+        int monsters = 1,
+        int floor = 1,
+        IReadOnlyList<Guid>? elementIds = null
+    ) =>
+        new(
             Guid.NewGuid(),
-            sessionId,
-            encounterId,
-            commandId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
             EncounterType.Enemy,
+            Guid.NewGuid(),
+            floor,
+            2,
+            [new EncounterParticipant(Guid.NewGuid(), null, null)],
             [
-                Fighter.CreateHero(Guid.NewGuid(), "Hero", 1, initialState, false),
-                Fighter.CreateMonster(Guid.NewGuid(), "Goblin", 1, initialState),
-            ],
-            DateTimeOffset.UtcNow
+                .. (
+                    elementIds ?? Enumerable.Range(0, monsters).Select(_ => Guid.NewGuid()).ToList()
+                ).Select(id => new EncounterMonster(id, false)),
+            ]
         );
-    }
+
+    private static MonsterDefinition Definition(string name, MonsterClass monsterClass) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            Class = monsterClass,
+            ImageUrl = $"/assets/monsters/{name.ToLowerInvariant().Replace(' ', '-')}.png",
+            BaseHealth = 20,
+            BaseAttack = 10,
+            BaseDefense = 5,
+            BaseSpeed = 5,
+        };
+
+    private static Fighter HeroFighter(Guid heroId, int? hp) =>
+        Fighter.CreateHero(
+            heroId,
+            "Aldric",
+            2,
+            new FighterInitialState(
+                hp ?? 150,
+                150,
+                20,
+                20,
+                new FighterStats(18, 8, 9),
+                [new FighterAbility("warrior-strike", "Strike", 4, "SingleEnemy", 150)],
+                []
+            ),
+            isFromMockedData: false,
+            FighterVisual.Hero("warrior", 1, "bob1", 1)
+        );
 
     private sealed class FixedClock : IClock
     {
-        public DateTimeOffset UtcNow { get; } = new(2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
+        public DateTimeOffset UtcNow => Now;
     }
 
-    private static class MockHeroCatalogIds
+    private sealed class MiddleDice : IDice
     {
-        public static readonly Guid Warrior = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        public static readonly Guid Mage = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        public int Between(int minInclusive, int maxInclusive) =>
+            maxInclusive - minInclusive == 99 ? 50
+            : minInclusive == 85 ? 100
+            : minInclusive;
     }
 }

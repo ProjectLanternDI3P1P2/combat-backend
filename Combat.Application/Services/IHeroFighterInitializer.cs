@@ -8,5 +8,12 @@ namespace Combat.Application.Services;
 /// </summary>
 public interface IHeroFighterInitializer
 {
-    Task<Fighter> InitializeAsync(Guid heroId, CancellationToken cancellationToken);
+    /// <param name="currentHp">Hit points the hero still has in the run; null: full.</param>
+    /// <param name="currentMana">Mana the hero still has in the run; null: full.</param>
+    Task<Fighter> InitializeAsync(
+        Guid heroId,
+        int? currentHp,
+        int? currentMana,
+        CancellationToken cancellationToken
+    );
 }

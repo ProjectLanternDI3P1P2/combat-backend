@@ -240,7 +240,7 @@ public class HeroCombatDataProviderTests
             [
                 new HeroAbility
                 {
-                    AbilityId = Guid.NewGuid(),
+                    Code = "strike",
                     Name = "Strike",
                     ManaCost = 5,
                     TargetType = "SingleEnemy",
