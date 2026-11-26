@@ -7,7 +7,14 @@
 
   <ItemGroup>
     <PackageReference Include="Bogus" Version="35.6.5" />
+    <PackageReference Include="Dungeon.Contracts" Version="5.0.0" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.76.0" />
+    <PackageReference
+      Include="Player.Contracts"
+      Version="5.0.0"
+      Aliases="PlayerContracts"
+      PrivateAssets="compile"
+    />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <PrivateAssets>all</PrivateAssets>

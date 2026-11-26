@@ -36,6 +36,7 @@ public static class MockHeroCatalog
                 Ability("a1000000-0000-0000-0000-000000000001", "Heavy Strike", 5, "SingleEnemy"),
                 Ability("a1000000-0000-0000-0000-000000000002", "Shield Wall", 8, "Self"),
             ],
+            ClassCode = "warrior",
             IsMocked = true,
         },
         new HeroCombatSnapshot
@@ -99,7 +100,7 @@ public static class MockHeroCatalog
     ) =>
         new()
         {
-            AbilityId = Guid.Parse(abilityId),
+            Code = abilityId,
             Name = name,
             ManaCost = manaCost,
             TargetType = targetType,

@@ -5,7 +5,6 @@ using Combat.Infrastructure.ExternalServices;
 using Combat.Infrastructure.Grpc;
 using Combat.Infrastructure.Messaging;
 using Combat.Infrastructure.Persistence;
-using Combat.Infrastructure.Persistence.InMemory;
 using Combat.Infrastructure.PipelineBehavior;
 using Combat.Infrastructure.Services;
 using MediatR;
@@ -33,10 +32,9 @@ public static class InfrastructureServiceRegistration
             .Configure<MonsterGenerationOptions>(
                 configuration.GetSection(MonsterGenerationOptions.SectionName)
             )
-            .Configure<FightOptions>(configuration.GetSection(FightOptions.SectionName))
+            .Configure<CombatOptions>(configuration.GetSection(CombatOptions.SectionName))
             .AddSingleton<IClock, SystemClock>()
             .AddSingleton<IDice, SystemDice>()
-            .AddSingleton<IFightRepository, InMemoryFightStore>()
             .AddTransient(typeof(IPipelineBehavior<,>), typeof(CommandTransactionBehavior<,>))
             .AddEfConnection()
             .AddRepositories()
