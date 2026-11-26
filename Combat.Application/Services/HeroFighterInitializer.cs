@@ -9,11 +9,16 @@ public sealed class HeroFighterInitializer(
     ILogger logger
 ) : IHeroFighterInitializer
 {
-    public async Task<Fighter> InitializeAsync(Guid heroId, CancellationToken cancellationToken)
+    public async Task<Fighter> InitializeAsync(
+        Guid heroId,
+        int? currentHp,
+        int? currentMana,
+        CancellationToken cancellationToken
+    )
     {
         HeroCombatData data = await heroCombatDataProvider.GetAsync(heroId, cancellationToken);
 
-        Fighter fighter = HeroFighterFactory.Create(data);
+        Fighter fighter = HeroFighterFactory.Create(data, currentHp, currentMana);
 
         logger.Information(
             "Temporary combat state {FighterId} created for hero {HeroId}: Hp {CurrentHp}/{MaxHp}, Mana {CurrentMana}/{MaxMana}, {AbilityCount} abilities, {ItemCount} items, IsFromMockedData {IsFromMockedData}.",

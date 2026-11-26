@@ -6,6 +6,7 @@ namespace Combat.Application.Features.CombatUseCase.CreateCombat;
 
 public sealed record CreateCombatResult(
     Guid CombatId,
+    Guid RunId,
     Guid SessionId,
     Guid EncounterId,
     EncounterType EncounterType,
@@ -17,6 +18,7 @@ public sealed record CreateCombatResult(
     {
         return new CreateCombatResult(
             combat.CombatId,
+            combat.RunId,
             combat.SessionId,
             combat.EncounterId,
             combat.EncounterType,
@@ -41,7 +43,8 @@ public sealed record CombatParticipantResult(
     int Speed,
     FighterState State,
     IReadOnlyList<FighterAbility> Abilities,
-    IReadOnlyList<FighterEffect> Effects
+    IReadOnlyList<FighterEffect> Effects,
+    FighterVisual Visual
 )
 {
     public static CombatParticipantResult From(Fighter fighter)
@@ -61,7 +64,8 @@ public sealed record CombatParticipantResult(
             fighter.Stats.Speed,
             fighter.State,
             fighter.Abilities,
-            fighter.Effects
+            fighter.Effects,
+            fighter.Visual
         );
     }
 }

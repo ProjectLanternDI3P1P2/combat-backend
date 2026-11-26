@@ -1,8 +1,8 @@
 using Combat.Application.Exceptions;
 using Combat.Application.Models;
-using Combat.Application.Ports;
 using Combat.Application.Services;
 using Combat.Domain.Entities;
+using Combat.Domain.Enums;
 using Combat.Domain.Repositories;
 using Combat.Domain.Services;
 using MediatR;
@@ -13,11 +13,11 @@ namespace Combat.Application.Features.CombatUseCase.CreateCombat;
 
 public sealed class CreateCombatCommandHandler(
     ICombatInstanceRepository combatInstanceRepository,
-    ISessionHeroesClient sessionHeroesClient,
-    IEncounterContextClient encounterContextClient,
     IHeroFighterInitializer heroFighterInitializer,
     IMonsterDefinitionRepository monsterDefinitionRepository,
-    IOptions<MonsterGenerationOptions> options,
+    IOptions<MonsterGenerationOptions> monsterOptions,
+    IOptions<CombatOptions> combatOptions,
+    IDice dice,
     IClock clock,
     ILogger logger
 ) : IRequestHandler<CreateCombatCommand, CreateCombatResult>
@@ -48,11 +48,7 @@ public sealed class CreateCombatCommandHandler(
         );
         if (combatOfEncounter is not null)
         {
-            if (combatOfEncounter.SessionId != request.SessionId)
-            {
-                throw new IdempotencyKeyReuseException(request.CommandId);
-            }
-
+            EnsureSameRequest(combatOfEncounter, request);
             logger.Information(
                 "Encounter {EncounterId} already produced combat {CombatId}.",
                 request.EncounterId,
@@ -61,40 +57,15 @@ public sealed class CreateCombatCommandHandler(
             return CreateCombatResult.From(combatOfEncounter);
         }
 
-        List<Guid> heroIds = await GetHeroIdsAsync(request, cancellationToken);
-        EncounterContext encounter = await GetEncounterContextAsync(request, cancellationToken);
-
         List<Fighter> fighters = [];
-        foreach (Guid heroId in heroIds)
+        foreach (EncounterParticipant participant in request.Participants)
         {
-            fighters.Add(await InitializeHeroAsync(heroId, cancellationToken));
+            fighters.Add(await InitializeHeroAsync(participant, cancellationToken));
         }
 
-        IReadOnlyList<MonsterDefinition> definitions =
-            await monsterDefinitionRepository.GetByClassAsync(
-                request.EncounterType.ToMonsterClass(),
-                cancellationToken
-            );
-        if (definitions.Count == 0)
-        {
-            throw new InvalidCombatEncounterException(
-                $"no monster definition is configured for the '{request.EncounterType}' encounter type."
-            );
-        }
+        fighters.AddRange(await CreateMonstersAsync(request, cancellationToken));
 
-        for (int index = 0; index < encounter.MonsterQuantity; index++)
-        {
-            MonsterDefinition definition = definitions[Random.Shared.Next(definitions.Count)];
-            fighters.Add(
-                MonsterFighterFactory.Create(
-                    definition,
-                    encounter.Level,
-                    heroIds.Count,
-                    options.Value
-                )
-            );
-        }
-
+        DateTimeOffset now = clock.UtcNow;
         CombatInstance combat = CombatInstance.Create(
             Guid.NewGuid(),
             request.SessionId,
@@ -102,97 +73,99 @@ public sealed class CreateCombatCommandHandler(
             request.CommandId,
             request.EncounterType,
             fighters,
-            clock.UtcNow
+            now,
+            new CombatContext(request.RunId, request.Floor, request.RoomId)
         );
+        combat.Start(dice, now, combatOptions.Value.TurnDurationSeconds);
 
         await combatInstanceRepository.AddAsync(combat, cancellationToken);
 
         logger.Information(
-            "Combat {CombatId} created for session {SessionId} from encounter {EncounterId} ({EncounterType}): {HeroCount} hero(s), {MonsterCount} monster(s).",
+            "Combat {CombatId} created for run {RunId}, session {SessionId}, encounter {EncounterId} ({EncounterType}, floor {Floor}): {HeroCount} hero(s), {MonsterCount} monster(s), status {Status}.",
             combat.CombatId,
+            combat.RunId,
             combat.SessionId,
             combat.EncounterId,
             combat.EncounterType,
-            heroIds.Count,
-            encounter.MonsterQuantity
+            combat.Floor,
+            request.Participants.Count,
+            request.Monsters.Count,
+            combat.Status
         );
 
         return CreateCombatResult.From(combat);
     }
 
-    private async Task<List<Guid>> GetHeroIdsAsync(
+    private async Task<List<Fighter>> CreateMonstersAsync(
         CreateCombatCommand request,
         CancellationToken cancellationToken
     )
     {
-        IReadOnlyList<Guid> heroIds = await sessionHeroesClient.GetHeroIdsAsync(
-            request.SessionId,
-            cancellationToken
-        );
-
-        List<Guid> distinctHeroIds = [.. heroIds.Distinct()];
-
-        if (distinctHeroIds.Count == 0)
+        Dictionary<MonsterClass, IReadOnlyList<MonsterDefinition>> definitionsByClass = [];
+        List<Fighter> monsters = [];
+        foreach (EncounterMonster monster in request.Monsters)
         {
-            throw new NoCombatParticipantsException(request.SessionId);
-        }
+            MonsterClass monsterClass = monster.IsBoss ? MonsterClass.Boss : MonsterClass.Ordinary;
+            if (
+                !definitionsByClass.TryGetValue(
+                    monsterClass,
+                    out IReadOnlyList<MonsterDefinition>? definitions
+                )
+            )
+            {
+                definitions = await monsterDefinitionRepository.GetByClassAsync(
+                    monsterClass,
+                    cancellationToken
+                );
+                if (definitions.Count == 0)
+                {
+                    throw new InvalidCombatEncounterException(
+                        $"no monster definition is configured for the '{monsterClass}' class."
+                    );
+                }
 
-        return distinctHeroIds;
-    }
+                definitionsByClass[monsterClass] = definitions;
+            }
 
-    private async Task<EncounterContext> GetEncounterContextAsync(
-        CreateCombatCommand request,
-        CancellationToken cancellationToken
-    )
-    {
-        EncounterContext encounter = await encounterContextClient.GetAsync(
-            request.SessionId,
-            request.EncounterType,
-            cancellationToken
-        );
-
-        if (encounter.EncounterType != request.EncounterType)
-        {
-            throw new InvalidCombatEncounterException(
-                "the encounter context does not match the requested encounter type."
+            MonsterDefinition definition = MonsterFighterFactory.Pick(
+                definitions,
+                monster.ElementId
+            );
+            monsters.Add(
+                MonsterFighterFactory.Create(
+                    definition,
+                    monster.ElementId,
+                    monster.IsBoss,
+                    request.Floor,
+                    request.Participants.Count,
+                    monsterOptions.Value
+                )
             );
         }
 
-        if (
-            encounter.MonsterQuantity <= 0
-            || encounter.MonsterQuantity > options.Value.MaxMonstersPerEncounter
-        )
-        {
-            throw new InvalidCombatEncounterException(
-                $"the encounter requires an invalid number of monsters ({encounter.MonsterQuantity})."
-            );
-        }
-
-        if (encounter.Level <= 0 || encounter.Level > options.Value.MaxFloor)
-        {
-            throw new InvalidCombatEncounterException(
-                $"the encounter requires an invalid level ({encounter.Level})."
-            );
-        }
-
-        return encounter;
+        return monsters;
     }
 
     private async Task<Fighter> InitializeHeroAsync(
-        Guid heroId,
+        EncounterParticipant participant,
         CancellationToken cancellationToken
     )
     {
         try
         {
-            return await heroFighterInitializer.InitializeAsync(heroId, cancellationToken);
+            return await heroFighterInitializer.InitializeAsync(
+                participant.HeroId,
+                participant.CurrentHp,
+                participant.CurrentMana,
+                cancellationToken
+            );
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             logger.Error(
                 exception,
                 "Combat creation failed: hero {HeroId} could not be initialized.",
-                heroId
+                participant.HeroId
             );
             throw;
         }
@@ -200,10 +173,20 @@ public sealed class CreateCombatCommandHandler(
 
     private static void EnsureSameRequest(CombatInstance combat, CreateCombatCommand request)
     {
+        HashSet<Guid> requestedMobs = [.. request.Monsters.Select(monster => monster.ElementId)];
+        HashSet<Guid> combatMobs =
+        [
+            .. combat
+                .Fighters.Where(fighter => fighter.Type == FighterType.Monster)
+                .Select(fighter => fighter.ExternalId),
+        ];
+
         bool isSameRequest =
             combat.SessionId == request.SessionId
             && combat.EncounterId == request.EncounterId
-            && combat.EncounterType == request.EncounterType;
+            && combat.EncounterType == request.EncounterType
+            && combat.RunId == request.RunId
+            && requestedMobs.SetEquals(combatMobs);
 
         if (!isSameRequest)
         {
