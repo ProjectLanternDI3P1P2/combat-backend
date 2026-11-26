@@ -25,16 +25,6 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
             logger.Warning(exception, "Resource not found");
             await HandleNotFoundExceptionAsync(context, exception);
         }
-        catch (NoCombatParticipantsException exception)
-        {
-            logger.Warning(exception, "Session provides no combat participant");
-            await HandleProblemAsync(
-                context,
-                StatusCodes.Status409Conflict,
-                "No combat participant",
-                exception.Message
-            );
-        }
         catch (InvalidCombatEncounterException exception)
         {
             logger.Warning(exception, "Invalid encounter");

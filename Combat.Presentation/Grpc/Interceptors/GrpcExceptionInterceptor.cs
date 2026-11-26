@@ -29,11 +29,6 @@ public sealed class GrpcExceptionInterceptor(ILogger logger, IHostEnvironment en
             logger.Warning(exception, "gRPC resource not found.");
             throw new RpcException(new Status(StatusCode.NotFound, exception.Message));
         }
-        catch (NoCombatParticipantsException exception)
-        {
-            logger.Warning(exception, "gRPC session provides no combat participant.");
-            throw new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message));
-        }
         catch (InvalidCombatEncounterException exception)
         {
             logger.Warning(exception, "gRPC invalid encounter.");
