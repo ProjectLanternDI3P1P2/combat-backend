@@ -13,6 +13,7 @@ public sealed class CombatFighterConfiguration : IEntityTypeConfiguration<Combat
         builder.HasKey(fighter => fighter.FighterId);
         builder.Property(fighter => fighter.FighterId).HasColumnName("CombatFighterId");
         builder.Property(fighter => fighter.CombatId).HasColumnName("CombatId");
+        builder.Property(fighter => fighter.Order).HasColumnName("CombatFighterOrder");
         builder
             .Property(fighter => fighter.Type)
             .HasConversion<string>()
@@ -73,6 +74,11 @@ public sealed class CombatFighterConfiguration : IEntityTypeConfiguration<Combat
             .HasColumnType("jsonb")
             .HasColumnName("CombatFighterEffects");
 
+        builder.Property(fighter => fighter.IsDefending).HasColumnName("CombatFighterIsDefending");
+        builder
+            .Property(fighter => fighter.VisualJson)
+            .HasColumnType("jsonb")
+            .HasColumnName("CombatFighterVisual");
         builder.HasIndex(fighter => fighter.CombatId);
     }
 }

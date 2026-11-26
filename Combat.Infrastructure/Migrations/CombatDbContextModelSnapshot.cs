@@ -240,6 +240,10 @@ namespace Combat.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("CombatFighterInitialSpeed");
 
+                    b.Property<bool>("IsDefending")
+                        .HasColumnType("boolean")
+                        .HasColumnName("CombatFighterIsDefending");
+
                     b.Property<bool>("IsFromMockedData")
                         .HasColumnType("boolean")
                         .HasColumnName("CombatFighterIsFromMockedData");
@@ -267,6 +271,10 @@ namespace Combat.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("CombatFighterName");
 
+                    b.Property<int>("Order")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFighterOrder");
+
                     b.Property<int>("Speed")
                         .HasColumnType("integer")
                         .HasColumnName("CombatFighterSpeed");
@@ -283,6 +291,11 @@ namespace Combat.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("CombatFighterType");
 
+                    b.Property<string>("VisualJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatFighterVisual");
+
                     b.HasKey("FighterId");
 
                     b.HasIndex("CombatId");
@@ -296,6 +309,10 @@ namespace Combat.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("CombatId");
+
+                    b.Property<Guid?>("ActiveFighterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatActiveFighterId");
 
                     b.Property<Guid>("CommandId")
                         .HasColumnType("uuid")
@@ -311,6 +328,54 @@ namespace Combat.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("CombatEncounterType");
 
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CombatEndedAt");
+
+                    b.Property<string>("EventsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatEvents");
+
+                    b.Property<int>("Floor")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatFloor");
+
+                    b.Property<string>("ProcessedCommandsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatProcessedCommands");
+
+                    b.Property<string>("Result")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("CombatResult");
+
+                    b.Property<DateTimeOffset?>("ResultReportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CombatResultReportedAt");
+
+                    b.Property<int>("RoomId")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatRoomId");
+
+                    b.Property<int>("Round")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatRound");
+
+                    b.Property<int>("RoundIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatRoundIndex");
+
+                    b.Property<string>("RoundOrderJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("CombatRoundOrder");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CombatRunId");
+
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("CombatSessionId");
@@ -325,6 +390,24 @@ namespace Combat.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("CombatStatus");
 
+                    b.Property<int>("Turn")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatTurn");
+
+                    b.Property<DateTimeOffset?>("TurnDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CombatTurnDeadline");
+
+                    b.Property<int>("TurnDurationSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("CombatTurnDurationSeconds");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("CombatId");
 
                     b.HasIndex("CommandId")
@@ -332,6 +415,11 @@ namespace Combat.Infrastructure.Migrations
 
                     b.HasIndex("EncounterId")
                         .IsUnique();
+
+                    b.HasIndex("EndedAt")
+                        .HasFilter("\"CombatResultReportedAt\" IS NULL AND \"CombatEndedAt\" IS NOT NULL");
+
+                    b.HasIndex("RunId");
 
                     b.HasIndex("SessionId");
 

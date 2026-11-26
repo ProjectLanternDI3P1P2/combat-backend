@@ -38,13 +38,75 @@ public sealed class CombatInstanceRepository(CombatDbContext dbContext) : IComba
         return record is null ? null : ToDomain(record);
     }
 
+    public async Task<CombatInstance?> GetByIdAsync(
+        Guid combatId,
+        CancellationToken cancellationToken
+    )
+    {
+        CombatInstanceRecord? record = await dbContext
+            .CombatInstances.Include(instance => instance.Fighters)
+            .SingleOrDefaultAsync(instance => instance.CombatId == combatId, cancellationToken);
+
+        return record is null ? null : ToDomain(record);
+    }
+
     public async Task AddAsync(CombatInstance combat, CancellationToken cancellationToken)
     {
         await dbContext.CombatInstances.AddAsync(ToRecord(combat), cancellationToken);
     }
 
+    public async Task UpdateAsync(CombatInstance combat, CancellationToken cancellationToken)
+    {
+        CombatInstanceRecord record =
+            dbContext.CombatInstances.Local.SingleOrDefault(instance =>
+                instance.CombatId == combat.CombatId
+            )
+            ?? await dbContext
+                .CombatInstances.Include(instance => instance.Fighters)
+                .SingleAsync(instance => instance.CombatId == combat.CombatId, cancellationToken);
+
+        CopyProgress(combat, record);
+        foreach (Fighter fighter in combat.Fighters)
+        {
+            CombatFighterRecord fighterRecord = record.Fighters.Single(stored =>
+                stored.FighterId == fighter.FighterId
+            );
+            CopyState(fighter, fighterRecord);
+        }
+    }
+
+    public async Task<IReadOnlyList<Guid>> ListPendingResultReportsAsync(
+        int limit,
+        CancellationToken cancellationToken
+    )
+    {
+        return await dbContext
+            .CombatInstances.AsNoTracking()
+            .Where(instance => instance.EndedAt != null && instance.ResultReportedAt == null)
+            .OrderBy(instance => instance.EndedAt)
+            .Take(limit)
+            .Select(instance => instance.CombatId)
+            .ToListAsync(cancellationToken);
+    }
+
     private static CombatInstance ToDomain(CombatInstanceRecord record)
     {
+        var progress = new CombatProgress(
+            new CombatContext(record.RunId, Math.Max(1, record.Floor), record.RoomId),
+            record.Result,
+            record.Round,
+            record.Turn,
+            record.RoundIndex,
+            Deserialize<Guid>(record.RoundOrderJson),
+            record.ActiveFighterId,
+            record.TurnDeadline,
+            record.TurnDurationSeconds,
+            record.EndedAt,
+            record.ResultReportedAt,
+            Deserialize<FightEvent>(record.EventsJson),
+            DeserializeMap(record.ProcessedCommandsJson)
+        );
+
         return CombatInstance.Rehydrate(
             record.CombatId,
             record.SessionId,
@@ -53,7 +115,8 @@ public sealed class CombatInstanceRepository(CombatDbContext dbContext) : IComba
             record.EncounterType,
             record.Status,
             record.StartedAt,
-            [.. record.Fighters.Select(ToDomain)]
+            [.. record.Fighters.OrderBy(fighter => fighter.Order).Select(ToDomain)],
+            progress
         );
     }
 
@@ -82,7 +145,10 @@ public sealed class CombatInstanceRepository(CombatDbContext dbContext) : IComba
             record.CurrentMana,
             new FighterStats(record.Attack, record.Defense, record.Speed),
             record.State,
-            Deserialize<FighterEffect>(record.EffectsJson)
+            Deserialize<FighterEffect>(record.EffectsJson),
+            DeserializeVisual(record.VisualJson),
+            record.IsDefending,
+            Deserialize<FighterItem>(record.ItemsJson)
         );
     }
 
@@ -95,48 +161,103 @@ public sealed class CombatInstanceRepository(CombatDbContext dbContext) : IComba
             EncounterId = combat.EncounterId,
             CommandId = combat.CommandId,
             EncounterType = combat.EncounterType,
-            Status = combat.Status,
             StartedAt = combat.StartedAt,
         };
+        CopyProgress(combat, record);
 
+        int order = 0;
         foreach (Fighter fighter in combat.Fighters)
         {
-            record.Fighters.Add(ToRecord(fighter, combat.CombatId));
+            var fighterRecord = new CombatFighterRecord
+            {
+                FighterId = fighter.FighterId,
+                CombatId = combat.CombatId,
+                Order = order++,
+                Type = fighter.Type,
+                ExternalId = fighter.ExternalId,
+                Name = fighter.Name,
+                Level = fighter.Level,
+                IsFromMockedData = fighter.IsFromMockedData,
+                MaxHp = fighter.MaxHp,
+                MaxMana = fighter.MaxMana,
+                InitialCurrentHp = fighter.InitialState.CurrentHp,
+                InitialMaxHp = fighter.InitialState.MaxHp,
+                InitialCurrentMana = fighter.InitialState.CurrentMana,
+                InitialMaxMana = fighter.InitialState.MaxMana,
+                InitialAttack = fighter.InitialState.Stats.Attack,
+                InitialDefense = fighter.InitialState.Stats.Defense,
+                InitialSpeed = fighter.InitialState.Stats.Speed,
+                AbilitiesJson = JsonSerializer.Serialize(fighter.Abilities, JsonOptions),
+                VisualJson = JsonSerializer.Serialize(fighter.Visual, JsonOptions),
+            };
+            CopyState(fighter, fighterRecord);
+            record.Fighters.Add(fighterRecord);
         }
 
         return record;
     }
 
-    private static CombatFighterRecord ToRecord(Fighter fighter, Guid combatId)
+    private static void CopyProgress(CombatInstance combat, CombatInstanceRecord record)
     {
-        return new CombatFighterRecord
+        record.Status = combat.Status;
+        record.RunId = combat.RunId;
+        record.Floor = combat.Floor;
+        record.RoomId = combat.RoomId;
+        record.Result = combat.Result;
+        record.Round = combat.Round;
+        record.Turn = combat.Turn;
+        record.RoundIndex = combat.RoundIndex;
+        record.RoundOrderJson = JsonSerializer.Serialize(combat.RoundOrder, JsonOptions);
+        record.ActiveFighterId = combat.ActiveFighterId;
+        record.TurnDeadline = combat.TurnDeadline;
+        record.TurnDurationSeconds = combat.TurnDurationSeconds;
+        record.EndedAt = combat.EndedAt;
+        record.ResultReportedAt = combat.ResultReportedAt;
+        record.EventsJson = JsonSerializer.Serialize(combat.Events, JsonOptions);
+        record.ProcessedCommandsJson = JsonSerializer.Serialize(
+            combat.ProcessedCommands.ToDictionary(
+                command => command.Key.ToString(),
+                command => command.Value
+            ),
+            JsonOptions
+        );
+    }
+
+    private static void CopyState(Fighter fighter, CombatFighterRecord record)
+    {
+        record.CurrentHp = fighter.CurrentHp;
+        record.CurrentMana = fighter.CurrentMana;
+        record.Attack = fighter.Stats.Attack;
+        record.Defense = fighter.Stats.Defense;
+        record.Speed = fighter.Stats.Speed;
+        record.State = fighter.State;
+        record.IsDefending = fighter.IsDefending;
+        record.ItemsJson = JsonSerializer.Serialize(fighter.Items, JsonOptions);
+        record.EffectsJson = JsonSerializer.Serialize(fighter.Effects, JsonOptions);
+    }
+
+    private static FighterVisual? DeserializeVisual(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "{}")
         {
-            FighterId = fighter.FighterId,
-            CombatId = combatId,
-            Type = fighter.Type,
-            ExternalId = fighter.ExternalId,
-            Name = fighter.Name,
-            Level = fighter.Level,
-            IsFromMockedData = fighter.IsFromMockedData,
-            CurrentHp = fighter.CurrentHp,
-            MaxHp = fighter.MaxHp,
-            CurrentMana = fighter.CurrentMana,
-            MaxMana = fighter.MaxMana,
-            Attack = fighter.Stats.Attack,
-            Defense = fighter.Stats.Defense,
-            Speed = fighter.Stats.Speed,
-            State = fighter.State,
-            InitialCurrentHp = fighter.InitialState.CurrentHp,
-            InitialMaxHp = fighter.InitialState.MaxHp,
-            InitialCurrentMana = fighter.InitialState.CurrentMana,
-            InitialMaxMana = fighter.InitialState.MaxMana,
-            InitialAttack = fighter.InitialState.Stats.Attack,
-            InitialDefense = fighter.InitialState.Stats.Defense,
-            InitialSpeed = fighter.InitialState.Stats.Speed,
-            AbilitiesJson = JsonSerializer.Serialize(fighter.Abilities, JsonOptions),
-            ItemsJson = JsonSerializer.Serialize(fighter.Items, JsonOptions),
-            EffectsJson = JsonSerializer.Serialize(fighter.Effects, JsonOptions),
-        };
+            return null;
+        }
+
+        FighterVisual? visual = JsonSerializer.Deserialize<FighterVisual>(json, JsonOptions);
+        return string.IsNullOrEmpty(visual?.Kind) ? null : visual;
+    }
+
+    private static Dictionary<Guid, ProcessedCommand> DeserializeMap(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        Dictionary<string, ProcessedCommand> stored =
+            JsonSerializer.Deserialize<Dictionary<string, ProcessedCommand>>(json, JsonOptions)
+            ?? [];
+        return stored.ToDictionary(entry => Guid.Parse(entry.Key), entry => entry.Value);
     }
 
     private static List<T> Deserialize<T>(string json)
