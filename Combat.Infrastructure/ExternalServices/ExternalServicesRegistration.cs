@@ -1,4 +1,5 @@
 using Combat.Application.Ports;
+using Combat.Infrastructure.ExternalServices.Dungeon;
 using Combat.Infrastructure.ExternalServices.Player;
 using Combat.Infrastructure.ExternalServices.Rewards;
 using Microsoft.Extensions.Configuration;
@@ -22,11 +23,20 @@ public static class ExternalServicesRegistration
             configuration.GetSection(RewardsServiceOptions.SectionName).Get<RewardsServiceOptions>()
             ?? new RewardsServiceOptions();
 
+        EncounterServiceOptions encounterOptions =
+            configuration
+                .GetSection(EncounterServiceOptions.SectionName)
+                .Get<EncounterServiceOptions>()
+            ?? new EncounterServiceOptions();
+
         services
             .AddSingleton(Options.Create(playerOptions))
             .AddSingleton(Options.Create(rewardsOptions))
+            .AddSingleton(Options.Create(encounterOptions))
             .AddSingleton<MockHeroSnapshotClient>()
-            .AddSingleton<MockCombatInventoryClient>();
+            .AddSingleton<MockCombatInventoryClient>()
+            .AddSingleton<MockSessionHeroesClient>()
+            .AddSingleton<MockEncounterContextClient>();
 
         // Player and Rewards have not published their contracts yet: the mocks are the only source.
         // Once a real gRPC client exists, replace the matching line with
@@ -36,6 +46,14 @@ public static class ExternalServicesRegistration
         );
         services.AddScoped<ICombatInventoryClient>(provider =>
             provider.GetRequiredService<MockCombatInventoryClient>()
+        );
+
+        // Dungeon has not published its session roster nor its encounter context either.
+        services.AddScoped<ISessionHeroesClient>(provider =>
+            provider.GetRequiredService<MockSessionHeroesClient>()
+        );
+        services.AddScoped<IEncounterContextClient>(provider =>
+            provider.GetRequiredService<MockEncounterContextClient>()
         );
 
         return services;
@@ -50,6 +68,36 @@ public static class ExternalServicesRegistration
             .AddScoped<TRealClient>()
             .AddScoped<IHeroSnapshotClient>(provider =>
                 ActivatorUtilities.CreateInstance<FallbackHeroSnapshotClient>(
+                    provider,
+                    provider.GetRequiredService<TRealClient>()
+                )
+            );
+    }
+
+    public static IServiceCollection AddSessionHeroesClientWithMockFallback<TRealClient>(
+        this IServiceCollection services
+    )
+        where TRealClient : class, ISessionHeroesClient
+    {
+        return services
+            .AddScoped<TRealClient>()
+            .AddScoped<ISessionHeroesClient>(provider =>
+                ActivatorUtilities.CreateInstance<FallbackSessionHeroesClient>(
+                    provider,
+                    provider.GetRequiredService<TRealClient>()
+                )
+            );
+    }
+
+    public static IServiceCollection AddEncounterContextClientWithMockFallback<TRealClient>(
+        this IServiceCollection services
+    )
+        where TRealClient : class, IEncounterContextClient
+    {
+        return services
+            .AddScoped<TRealClient>()
+            .AddScoped<IEncounterContextClient>(provider =>
+                ActivatorUtilities.CreateInstance<FallbackEncounterContextClient>(
                     provider,
                     provider.GetRequiredService<TRealClient>()
                 )

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Combat.Application.Exceptions;
+using Combat.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using ILogger = Serilog.ILogger;
@@ -24,6 +25,26 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
             logger.Warning(exception, "Resource not found");
             await HandleNotFoundExceptionAsync(context, exception);
         }
+        catch (NoCombatParticipantsException exception)
+        {
+            logger.Warning(exception, "Session provides no combat participant");
+            await HandleProblemAsync(
+                context,
+                StatusCodes.Status409Conflict,
+                "No combat participant",
+                exception.Message
+            );
+        }
+        catch (InvalidCombatEncounterException exception)
+        {
+            logger.Warning(exception, "Invalid encounter");
+            await HandleProblemAsync(
+                context,
+                StatusCodes.Status422UnprocessableEntity,
+                "Invalid encounter",
+                exception.Message
+            );
+        }
         catch (ValidationException exception)
         {
             logger.Warning(exception, "Validation error occurred");
@@ -40,6 +61,16 @@ public sealed class ExceptionHandlingMiddleware(ILogger logger, IHostEnvironment
                 StatusCodes.Status409Conflict,
                 "Idempotency key conflict",
                 exception.Message
+            );
+        }
+        catch (FightRuleViolationException exception)
+        {
+            // An expected refusal of the rules, not an anomaly: logged by the handler.
+            await HandleProblemAsync(
+                context,
+                StatusCodes.Status409Conflict,
+                "Action refused",
+                exception.Reason
             );
         }
         catch (ExternalServiceUnavailableException exception)

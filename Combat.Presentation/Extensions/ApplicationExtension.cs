@@ -7,6 +7,11 @@ public static class ApplicationExtension
 {
     public static WebApplication ConfigureStart(this WebApplication app)
     {
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseCors(BuilderExtension.LocalFrontendsCorsPolicy);
+        }
+
         app.UseMiddleware<ExceptionHandlingMiddleware>();
 
         if (!app.Environment.IsDevelopment())
