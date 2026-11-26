@@ -15,6 +15,12 @@ public enum FightEventType
     ManaRestored,
     Defended,
     FleeFailed,
+
+    /// <summary>The active hero passed its turn.</summary>
+    Passed,
+
+    /// <summary>The active hero did not act before the deadline: the turn is passed.</summary>
+    TurnTimedOut,
     Fled,
     KnockedOut,
     Victory,

@@ -7,4 +7,7 @@ public enum FightActionType
     Item,
     Defend,
     Flee,
+
+    /// <summary>The hero does nothing this turn; also applied when the turn times out.</summary>
+    Pass,
 }
