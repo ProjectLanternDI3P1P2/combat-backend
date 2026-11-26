@@ -5,58 +5,63 @@
 
 ## Déclenchement
 
-Dungeon détecte une rencontre et demande la création du combat. Dungeon ne
-fournit pas de monstre concret : il fournit uniquement la session et le type de
-rencontre. Le service Combat reste propriétaire du choix et de la génération des
-monstres.
-
-L'appel est un gRPC interne `CombatService/CreateCombat` :
+Dungeon détecte un contact entre le héros et un pack de 1 à N mobs (ou le boss)
+et demande la création du combat par le gRPC interne `CombatService/CreateCombat`
+(`Combat.Contracts/Protos/combat_combat_v1.proto`, champs ajoutés de façon
+additive, ADR-GLOB-007) :
 
 | Champ | Rôle |
 |---|---|
-| `session_id` | Session de jeu à laquelle le combat appartient. Un combat appartient à exactement une session. |
-| `encounter_id` | Rencontre à l'origine du combat. Une rencontre ne crée jamais deux combats. |
-| `command_id` | Identifiant de la commande. La même commande ne crée jamais deux combats. |
-| `encounter_type` | `ENEMY`, `SUB_BOSS` ou `BOSS`. |
+| `session_id`, `encounter_id`, `command_id` | Session, rencontre (= clé d'idempotence côté Dungeon), commande. Une rencontre ne crée jamais deux combats. |
+| `encounter_type` | `ENEMY` (collision) ou `BOSS`. |
+| `run_id`, `floor` (1-basé), `room_id` | Où a eu lieu la rencontre. |
+| `participants[]` | Héros du groupe (`hero_id`) et, s'ils sont connus, les PV/mana qu'il leur reste dans la run (`current_hp`, `current_mana`). |
+| `monsters[]` | Un élément par mob engagé : `element_id` (id du mob Dungeon) et `is_boss`. |
 
-Réponse : `combat_id` (GUID unique), les identifiants de la session et de la
-rencontre, le statut du combat et l'état de combat initial de chaque
-participant.
+Les mobs Dungeon (`zombie`, `bat`, `goblin`, `mage`) ne décrivent **qu'un
+déplacement**. Combat choisit le monstre : une `MonsterDefinition` de la classe
+`Ordinary` (ou `Boss`), tirée de façon **déterministe** à partir de
+`element_id`. Le même mob devient donc toujours le même monstre, même après une
+fuite.
 
-Le contrat vit dans `Combat.Contracts/Protos/combat_combat_v1.proto` et suit
-les règles de [ADR-GLOB-007](../adr/ADR-GLOB-007-protobuf-contract-packages.md).
-
-## Types de rencontre
-
-`EncounterType` (Domain) → classe de monstre :
-
-| `EncounterType` | `MonsterClass` |
-|---|---|
-| `Enemy` | `Ordinary` |
-| `SubBoss` | `SubBoss` |
-| `Boss` | `Boss` |
-
-La classe décrit une catégorie, pas un monstre. Le monstre concret est une
-`MonsterDefinition` (Goblin, Dragon, Necromancer…) choisie par Combat dans le
-catalogue. Player et Dungeon ne décident jamais du monstre.
+Réponse : `combat_id`, `run_id`, le statut (`active` / `finished`) et l'état de
+combat initial de chaque participant (avec `class_code`, `sprite_key`,
+`is_boss`).
 
 ## Déroulé
 
 1. **Idempotence** : le combat est cherché par `command_id`, puis par
-   `encounter_id`. Un combat déjà existant est renvoyé tel quel. Un `command_id`
-   réutilisé avec d'autres paramètres lève `IdempotencyKeyReuseException`.
-2. **Roster** : `ISessionHeroesClient` (Player) fournit les héros de la
-   session. Player reste la source de vérité de la composition du groupe.
-3. **Contexte de rencontre** : `IEncounterContextClient` (Dungeon) fournit la
-   quantité de monstres et leur niveau.
-4. **Participants** : chaque héros est initialisé via `IHeroFighterInitializer`
-   (US2) à partir des données Player et Rewards (US1). Un seul échec annule
-   toute la création : le combat ne persiste pas.
-5. **Monstres** : une `MonsterDefinition` est tirée dans la classe correspondant
-   à la rencontre, autant de fois que la rencontre en exige. Les statistiques
-   suivent la règle de palier et de taille de groupe.
-6. **Persistance** : le combat et l'état de chaque participant sont enregistrés
-   dans la commande. Le comportement de transaction Mediator porte le commit.
+   `encounter_id`. Un combat existant est renvoyé tel quel ; même clé avec un
+   autre pack → `IdempotencyKeyReuseException` (`AlreadyExists`).
+2. **Héros** : chaque participant est initialisé avec les données **réelles** de
+   Player (`GetCombatantSnapshot` : stats, compétences, apparence). Les PV/mana
+   envoyés par Dungeon remplacent ceux de Player. Player indisponible →
+   `Unavailable` : aucun combat, Dungeon réessaiera avec la même clé. Aucun mock
+   n'est servi au runtime.
+3. **Monstres** : statistiques de la définition, ajustées par étage et taille
+   du groupe (`MonsterStatsCalculator`).
+4. **Démarrage** : le moteur ouvre le premier tour (les monstres plus rapides
+   jouent d'abord), avec une échéance serveur pour le tour du héros.
+5. **Persistance** : combat, participants, tours, journal d'événements et
+   commandes traitées dans la même transaction.
+
+## Déroulement du combat (CombatHub)
+
+Le gameplay passe par SignalR `/hubs/combats` (ADR-GLOB-010) :
+`JoinCombat { combatId }`, `SubmitAction { commandId, combatId, actorId, type,
+targetId?, abilityCode? }` (`attack`, `ability`, `defend`, `flee`, `pass`),
+`PassTurn`, événement `CombatStateChanged`. Chaque appel répond un
+`CombatCommandResult` (`accepted`, `error`, `snapshot`, `events` de la commande).
+Le moteur reprend les règles de la boucle de combat : initiative par vitesse,
+une action par tour, tours des monstres joués par le serveur, esquive,
+critique (10 %, x1,5), défense (-50 %), fuite (60 %, interdite contre un boss).
+Le timer est **paresseux** : un tour dont l'échéance est passée est passé au
+prochain `JoinCombat` ou à la prochaine commande. `GET /api/v1/combats/{id}`
+donne une lecture seule.
+
+À la fin, Combat rapporte l'issue à Dungeon (`DungeonCombatService/
+ReportCombatResult`, `command_id` = `combat_id`) hors transaction. Un échec
+laisse le rapport en attente ; `PendingCombatReportsWorker` le relance.
 
 ## Règles métier
 
@@ -74,44 +79,21 @@ catalogue. Player et Dungeon ne décident jamais du monstre.
 
 | Table | Contenu |
 |---|---|
-| `CombatInstances` | `CombatId`, `CombatSessionId`, `CombatEncounterId`, `CombatCommandId`, `CombatEncounterType`, `CombatStatus`, `CombatStartedAt` |
-| `CombatFighters` | Identité du participant, état courant (PV, mana, statistiques, état), état initial, capacités, objets et effets |
+| `CombatInstances` | Identifiants, rencontre, run, étage, statut, résultat, tour/manche, ordre d'initiative, acteur et échéance du tour, journal d'événements, commandes traitées, date du rapport à Dungeon, version de ligne (`xmin`) |
+| `CombatFighters` | Identité, ordre, état courant (PV, mana, statistiques, défense), état initial, capacités (code, coût, puissance), objets, effets, visuel (codes) |
 
-`CombatCommandId` et `CombatEncounterId` sont uniques en base : la règle
-d'idempotence est garantie par la base, pas seulement par le code.
+`CombatCommandId` et `CombatEncounterId` sont uniques en base. Deux commandes
+concurrentes sur un même combat : la seconde est refusée (`conflict`).
 
 ## Erreurs
 
 | Exception | HTTP | gRPC |
 |---|---:|---|
-| `SessionNotFoundException` | 404 | `NotFound` |
-| `NoCombatParticipantsException` | 409 | `FailedPrecondition` |
+| `HeroNotFoundException` | 404 | `NotFound` |
+| `ExternalServiceUnavailableException` | 503 | `Unavailable` |
 | `InvalidCombatEncounterException` | 422 | `FailedPrecondition` |
 | `IdempotencyKeyReuseException` | 409 | `AlreadyExists` |
-
-## Clients factices
-
-Player et Dungeon n'ont pas publié leurs contrats. Les mocks
-(`Infrastructure/ExternalServices/Mock*`) servent de source unique et produisent
-les mêmes modèles que les futurs clients réels.
-
-- `MockSessionHeroesClient` renvoie le roster du catalogue héros simulé.
-- `MockEncounterContextClient` renvoie la quantité et le niveau de chaque type
-  de rencontre, configurés dans `ExternalServices:Dungeon`.
-
-## Brancher les vraies données
-
-1. Référencer les versions publiées de `Player.Contracts` et `Dungeon.Contracts`.
-2. Écrire `PlayerSessionHeroesGrpcClient : ISessionHeroesClient` et
-   `DungeonEncounterContextGrpcClient : IEncounterContextClient` dans
-   `Infrastructure/ExternalServices`.
-3. Dans `ExternalServicesRegistration`, remplacer l'enregistrement du mock par
-   `AddSessionHeroesClientWithMockFallback<TRealClient>()` ou
-   `AddEncounterContextClientWithMockFallback<TRealClient>()`.
-
-Le secours ne sert alors plus que lorsque le service est **indisponible** : un
-« héros introuvable » ou une session inconnue renvoyés par le service réel ne
-sont jamais remplacés par un mock.
+| `ValidationException` (0 monstre, doublon, étage…) | 422 | `InvalidArgument` |
 
 ## Tester la création d'un combat
 
@@ -125,16 +107,17 @@ L'API écoute sur `http://localhost:8080`, le gRPC interne sur
 `http://localhost:8081`, PostgreSQL sur `5433` et RabbitMQ sur `15672`.
 
 ```bash
-# Un combat BOSS
+# Un combat BOSS (E = id de la rencontre)
+E=$(uuidgen)
 grpcurl -plaintext \
   -import-path Combat.Contracts/Protos \
   -proto combat_combat_v1.proto \
-  -d "{\"session_id\":\"$(uuidgen)\",\"encounter_id\":\"$(uuidgen)\",\"command_id\":\"$(uuidgen)\",\"encounter_type\":\"ENCOUNTER_TYPE_BOSS\"}" \
+  -d "{\"session_id\":\"$(uuidgen)\",\"encounter_id\":\"$E\",\"command_id\":\"$E\",\"encounter_type\":\"ENCOUNTER_TYPE_BOSS\",\"run_id\":\"$(uuidgen)\",\"floor\":1,\"participants\":[{\"hero_id\":\"00000000-0000-0000-0000-000000000101\"}],\"monsters\":[{\"element_id\":\"$(uuidgen)\",\"is_boss\":true}]}" \
   localhost:8081 combat.v1.CombatService/CreateCombat
 ```
 
-Types acceptés : `ENCOUNTER_TYPE_ENEMY`, `ENCOUNTER_TYPE_SUB_BOSS`,
-`ENCOUNTER_TYPE_BOSS`.
+Types utilisés par Dungeon : `ENCOUNTER_TYPE_ENEMY` et `ENCOUNTER_TYPE_BOSS`.
+Le héros doit exister dans Player (ici le guerrier de démonstration).
 
 La réponse contient le `combatId`, le statut et l'état de combat initial de
 chaque participant. Rejouer la même commande renvoie le même `combatId` ;
