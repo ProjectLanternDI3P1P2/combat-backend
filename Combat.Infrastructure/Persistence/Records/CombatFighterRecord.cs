@@ -7,6 +7,9 @@ public sealed class CombatFighterRecord
 {
     public Guid FighterId { get; set; }
     public Guid CombatId { get; set; }
+
+    /// <summary>Position in the combat: breaks initiative ties the same way after a reload.</summary>
+    public int Order { get; set; }
     public FighterType Type { get; set; }
     public Guid ExternalId { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -33,4 +36,6 @@ public sealed class CombatFighterRecord
     public string AbilitiesJson { get; set; } = "[]";
     public string ItemsJson { get; set; } = "[]";
     public string EffectsJson { get; set; } = "[]";
+    public bool IsDefending { get; set; }
+    public string VisualJson { get; set; } = "{}";
 }
