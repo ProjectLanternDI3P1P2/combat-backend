@@ -149,7 +149,7 @@ public sealed class CombatInstanceTests
             currentMana: 50,
             maxMana: 50,
             stats: new FighterStats(10, 5, 8),
-            abilities: [new FighterAbility(Guid.NewGuid(), "Strike", 5, "SingleEnemy")],
+            abilities: [new FighterAbility("strike", "Strike", 5, "SingleEnemy", 150)],
             items: [new FighterItem(Guid.NewGuid(), "Health Potion", "Consumable", 2)]
         );
 
@@ -164,7 +164,7 @@ public sealed class CombatInstanceTests
             currentMana: 0,
             maxMana: 0,
             stats: new FighterStats(6, 3, 4),
-            abilities: [new FighterAbility(Guid.NewGuid(), "Basic attack", 0, "SingleEnemy")],
+            abilities: [new FighterAbility("basic-attack", "Basic attack", 0, "SingleEnemy", 100)],
             items: []
         );
 

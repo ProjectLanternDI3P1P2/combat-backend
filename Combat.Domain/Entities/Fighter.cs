@@ -22,11 +22,13 @@ public sealed class Fighter
         string name,
         int level,
         FighterInitialState initialState,
-        bool isFromMockedData
+        bool isFromMockedData,
+        FighterVisual visual
     )
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(level);
         ArgumentNullException.ThrowIfNull(initialState);
+        ArgumentNullException.ThrowIfNull(visual);
 
         FighterId = fighterId;
         Type = type;
@@ -35,6 +37,7 @@ public sealed class Fighter
         Level = level;
         InitialState = initialState;
         IsFromMockedData = isFromMockedData;
+        Visual = visual;
 
         CurrentHp = initialState.CurrentHp;
         CurrentMana = initialState.CurrentMana;
@@ -69,12 +72,21 @@ public sealed class Fighter
     public FighterState State { get; private set; }
     public bool IsKnockedOut => State == FighterState.KnockedOut;
 
+    /// <summary>Codes a client uses to draw the fighter.</summary>
+    public FighterVisual Visual { get; }
+
+    /// <summary>Halves the damage taken until the fighter's next turn.</summary>
+    public bool IsDefending { get; private set; }
+
+    public bool IsHero => Type == FighterType.Hero;
+
     public static Fighter CreateHero(
         Guid heroId,
         string name,
         int level,
         FighterInitialState initialState,
-        bool isFromMockedData
+        bool isFromMockedData,
+        FighterVisual? visual = null
     )
     {
         return new Fighter(
@@ -84,26 +96,30 @@ public sealed class Fighter
             name,
             level,
             initialState,
-            isFromMockedData
+            isFromMockedData,
+            visual ?? new FighterVisual(FighterVisual.HeroKind)
         );
     }
 
     /// <summary>Creates the temporary state of a monster generated for the combat.</summary>
+    /// <param name="externalId">Id of the Dungeon mob the monster stands for.</param>
     public static Fighter CreateMonster(
-        Guid monsterId,
+        Guid externalId,
         string name,
         int level,
-        FighterInitialState initialState
+        FighterInitialState initialState,
+        FighterVisual? visual = null
     )
     {
         return new Fighter(
             Guid.NewGuid(),
             FighterType.Monster,
-            monsterId,
+            externalId,
             name,
             level,
             initialState,
-            isFromMockedData: false
+            isFromMockedData: false,
+            visual ?? new FighterVisual(FighterVisual.MonsterKind)
         );
     }
 
@@ -120,7 +136,10 @@ public sealed class Fighter
         int currentMana,
         FighterStats currentStats,
         FighterState state,
-        IEnumerable<FighterEffect>? effects = null
+        IEnumerable<FighterEffect>? effects = null,
+        FighterVisual? visual = null,
+        bool isDefending = false,
+        IEnumerable<FighterItem>? items = null
     )
     {
         ArgumentNullException.ThrowIfNull(currentStats);
@@ -150,7 +169,11 @@ public sealed class Fighter
             name,
             level,
             initialState,
-            isFromMockedData
+            isFromMockedData,
+            visual
+                ?? new FighterVisual(
+                    type == FighterType.Hero ? FighterVisual.HeroKind : FighterVisual.MonsterKind
+                )
         )
         {
             CurrentHp = currentHp,
@@ -159,6 +182,13 @@ public sealed class Fighter
         };
 
         fighter.State = currentHp == 0 ? FighterState.KnockedOut : state;
+        fighter.IsDefending = isDefending && !fighter.IsKnockedOut;
+
+        if (items is not null)
+        {
+            fighter._items.Clear();
+            fighter._items.AddRange(items);
+        }
 
         if (effects is not null)
         {
@@ -181,6 +211,7 @@ public sealed class Fighter
         if (CurrentHp == 0)
         {
             State = FighterState.KnockedOut;
+            IsDefending = false;
         }
 
         return lostHp;
@@ -252,6 +283,16 @@ public sealed class Fighter
 
         _items[index] = new FighterItem(item.ItemId, item.Name, item.Category, item.Quantity - 1);
     }
+
+    public void StartDefending()
+    {
+        EnsureActive();
+        IsDefending = true;
+    }
+
+    public void StopDefending() => IsDefending = false;
+
+    public FighterItem? FindItem(Guid itemId) => _items.Find(item => item.ItemId == itemId);
 
     private void EnsureActive()
     {
