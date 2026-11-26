@@ -8,7 +8,13 @@ public static class PlayerCreatedMessageFactory
     public const string MessageType = "combat.player.created";
     public const int Version = 1;
 
-    public static MessageEnvelope Create(Guid playerId, string name, int attack, int health, int maxHealth)
+    public static MessageEnvelope Create(
+        Guid playerId,
+        string name,
+        int attack,
+        int health,
+        int maxHealth
+    )
     {
         PlayerCreated payload = new()
         {
@@ -16,11 +22,19 @@ public static class PlayerCreatedMessageFactory
             Name = name,
             Attack = attack,
             Health = health,
-            MaxHealth = maxHealth
+            MaxHealth = maxHealth,
         };
 
         Guid messageId = Guid.NewGuid();
-        return new MessageEnvelope(messageId, messageId.ToString(), null, MessageType, Version,
-            DateTimeOffset.UtcNow, "combat", payload.ToByteArray());
+        return new MessageEnvelope(
+            messageId,
+            messageId.ToString(),
+            null,
+            MessageType,
+            Version,
+            DateTimeOffset.UtcNow,
+            "combat",
+            payload.ToByteArray()
+        );
     }
 }

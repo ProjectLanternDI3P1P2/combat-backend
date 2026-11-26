@@ -10,9 +10,13 @@ namespace Combat.Infrastructure.Grpc.Clients;
 /// <summary>gRPC implementation of the application port for the Player service.</summary>
 public sealed class PlayerGrpcClient(
     CombatPlayerService.CombatPlayerServiceClient client,
-    IOptions<PlayerGrpcClientOptions> options) : IPlayerClient
+    IOptions<PlayerGrpcClientOptions> options
+) : IPlayerClient
 {
-    public async Task<PlayerSummary> GetPlayerAsync(Guid playerId, CancellationToken cancellationToken)
+    public async Task<PlayerSummary> GetPlayerAsync(
+        Guid playerId,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -20,7 +24,9 @@ public sealed class PlayerGrpcClient(
                 new GetPlayerRequest { PlayerId = playerId.ToString() },
                 new CallOptions(
                     deadline: DateTime.UtcNow.AddSeconds(options.Value.TimeoutSeconds),
-                    cancellationToken: cancellationToken));
+                    cancellationToken: cancellationToken
+                )
+            );
 
             return new PlayerSummary
             {
@@ -28,7 +34,7 @@ public sealed class PlayerGrpcClient(
                 Name = player.Name,
                 Health = player.Health,
                 MaxHealth = player.MaxHealth,
-                Attack = player.Attack
+                Attack = player.Attack,
             };
         }
         catch (RpcException exception) when (exception.StatusCode == StatusCode.NotFound)

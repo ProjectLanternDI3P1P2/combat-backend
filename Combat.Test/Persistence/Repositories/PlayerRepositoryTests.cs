@@ -33,7 +33,10 @@ public class PlayerRepositoryTests
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        var storedPlayer = await dbContext.Players.FindAsync([player.Id], TestContext.Current.CancellationToken);
+        var storedPlayer = await dbContext.Players.FindAsync(
+            [player.Id],
+            TestContext.Current.CancellationToken
+        );
         storedPlayer.Should().NotBeNull();
         storedPlayer!.Name.Should().Be(player.Name);
     }
@@ -50,7 +53,10 @@ public class PlayerRepositoryTests
         var repository = new PlayerRepository(dbContext);
 
         // Act
-        var result = await repository.GetPlayerByIdAsync(player.Id, TestContext.Current.CancellationToken);
+        var result = await repository.GetPlayerByIdAsync(
+            player.Id,
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         result.Should().NotBeNull();
@@ -66,7 +72,10 @@ public class PlayerRepositoryTests
         var repository = new PlayerRepository(dbContext);
 
         // Act
-        var result = await repository.GetPlayerByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await repository.GetPlayerByIdAsync(
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         result.Should().BeNull();
@@ -80,7 +89,7 @@ public class PlayerRepositoryTests
             Name = _faker.Name.FirstName(),
             Health = _faker.Random.Int(1, 100),
             MaxHealth = _faker.Random.Int(100, 200),
-            Attack = _faker.Random.Int(1, 20)
+            Attack = _faker.Random.Int(1, 20),
         };
     }
 }

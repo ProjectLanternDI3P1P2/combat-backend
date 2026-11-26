@@ -10,16 +10,22 @@ namespace Combat.Presentation.Grpc.Services;
 public sealed class PlayerGrpcService(IMediator mediator, ILogger logger)
     : CombatPlayerService.CombatPlayerServiceBase
 {
-    public override async Task<GetPlayerResponse> GetPlayer(GetPlayerRequest request, ServerCallContext context)
+    public override async Task<GetPlayerResponse> GetPlayer(
+        GetPlayerRequest request,
+        ServerCallContext context
+    )
     {
         if (!Guid.TryParse(request.PlayerId, out Guid playerId))
         {
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "player_id must be a valid UUID."));
+            throw new RpcException(
+                new Status(StatusCode.InvalidArgument, "player_id must be a valid UUID.")
+            );
         }
 
         GetPlayerByIdResult player = await mediator.Send(
             new GetPlayerByIdQuery(playerId),
-            context.CancellationToken);
+            context.CancellationToken
+        );
 
         logger.Information("gRPC player lookup succeeded for {PlayerId}.", playerId);
 
@@ -29,7 +35,7 @@ public sealed class PlayerGrpcService(IMediator mediator, ILogger logger)
             Name = player.Name,
             Health = player.Health,
             MaxHealth = player.MaxHealth,
-            Attack = player.Attack
+            Attack = player.Attack,
         };
     }
 }

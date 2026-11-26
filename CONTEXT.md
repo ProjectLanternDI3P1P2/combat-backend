@@ -8,6 +8,8 @@ There is no shared backend library, so this template is the only mechanism by
 which the five services share standards. What is written here is what they have
 in common.
 
+Le contexte métier Combat est décrit dans [CONTEXTE_METIER_COMBAT.fr.md](docs/architecture/CONTEXTE_METIER_COMBAT.fr.md).
+
 ## Language
 
 ### Branching and release

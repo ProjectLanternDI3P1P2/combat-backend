@@ -26,6 +26,8 @@ public static class ApplicationExtension
             {
                 opt.Title = "Combat API";
                 opt.Theme = ScalarTheme.DeepSpace;
+                opt.AddApiKeyAuthentication("UserId", scheme => scheme.WithName("X-User-Id"));
+                opt.EnablePersistentAuthentication();
             });
         }
 

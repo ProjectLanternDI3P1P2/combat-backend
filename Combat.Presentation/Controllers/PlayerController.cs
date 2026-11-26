@@ -12,7 +12,10 @@ namespace Combat.Presentation.Controllers;
 public sealed class PlayerController(IMediator mediator, ILogger logger) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Add([FromBody] PlayerDto playerDto, CancellationToken cancellationToken)
+    public async Task<IActionResult> Add(
+        [FromBody] PlayerDto playerDto,
+        CancellationToken cancellationToken
+    )
     {
         logger.Information("Received request to create player {PlayerId}.", playerDto.Id);
 
@@ -22,8 +25,10 @@ public sealed class PlayerController(IMediator mediator, ILogger logger) : Contr
                 playerDto.Name,
                 playerDto.Attack,
                 playerDto.Health,
-                playerDto.MaxHealth),
-            cancellationToken);
+                playerDto.MaxHealth
+            ),
+            cancellationToken
+        );
 
         logger.Information("Player {PlayerId} created successfully.", playerDto.Id);
         return CreatedAtAction(nameof(GetById), new { playerId = playerDto.Id }, null);

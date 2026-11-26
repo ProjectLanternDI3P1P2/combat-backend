@@ -78,7 +78,7 @@ Une `GameSession` n'est ni une session de connexion ni un `DungeonRun`. Player p
 |---|---|---|
 | `/api/player/...` | Player | Profil, création, lecture et sélection héros |
 | `/api/rewards/...` | Rewards | Inventaire, équiper/déséquiper hors combat, marketplace/achat |
-| `/api/progression/...` | Progression | XP, historique, leaderboard |
+| `/api/leaderboard/v1/...` | Leaderboard | Statistiques et classement |
 | Endpoints OIDC | Keycloak | Connexion, acquisition/renouvellement token |
 
 Les payloads REST sont JSON. Les contrôleurs sont des frontières applicatives fines et ne doivent pas dupliquer en HTTP une commande de gameplay déjà portée par un Hub.
@@ -131,6 +131,14 @@ Les contrats gRPC sont des packages NuGet Protobuf versionnés et possédés par
 | Combat → Dungeon | `ReportCombatResult` | Fin ; commande, combat, salle, `Won`/`Lost` | Transition salle/run. `Won` après reward confirmée. |
 
 Combat persiste les snapshots Player et Rewards obtenus à sa création. Un changement d'équipement ultérieur ne modifie pas ce combat. Le frontend bloque équiper/déséquiper en combat ; le MVP n'ajoute pas de réservation backend.
+
+La clarification du meeting Dungeon/Combat sur la génération des monstres et
+le suivi des PV/mana pendant le run est documentée dans
+[CONTEXTE_METIER_COMBAT.fr.md](CONTEXTE_METIER_COMBAT.fr.md). Les contrats
+devront être enrichis pour transmettre les PV/mana courants de Dungeon à
+Combat et les états finaux de Combat à Dungeon ; la forme, la compatibilité,
+la version et le propriétaire de chaque évolution restent à définir dans le
+contrat concerné.
 
 ## 5. Échanges RabbitMQ asynchrones
 
