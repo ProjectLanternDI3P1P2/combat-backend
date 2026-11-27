@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@ad88ca61eefa60732975f3263d0af2dcd72b99ba # scan gate + cosign + provenance
+    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@1b6a6b17433093218b9dbe63cebb5d7af6875117 # platform-gitops #99: same docker push for every image, sign before any pull
     with:
       application: combat
       image: 10.4.111.200:18443/lantern/combat-backend
