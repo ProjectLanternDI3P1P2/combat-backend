@@ -151,11 +151,11 @@ public sealed class CreateCombatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_RunHitPoints_AreGivenToTheHeroInitializer()
+    public async Task Handle_RunResourcesIncludingZeroMana_AreGivenToTheHeroInitializer()
     {
         CreateCombatCommand command = Command(monsters: 1) with
         {
-            Participants = [new EncounterParticipant(Guid.NewGuid(), 42, 7)],
+            Participants = [new EncounterParticipant(Guid.NewGuid(), 42, 0)],
         };
 
         await _handler.Handle(command, TestContext.Current.CancellationToken);
@@ -164,7 +164,7 @@ public sealed class CreateCombatCommandHandlerTests
             initializer.InitializeAsync(
                 command.Participants[0].HeroId,
                 42,
-                7,
+                0,
                 It.IsAny<CancellationToken>()
             )
         );

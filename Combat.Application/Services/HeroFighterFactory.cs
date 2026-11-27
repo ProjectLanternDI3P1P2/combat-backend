@@ -9,9 +9,9 @@ namespace Combat.Application.Services;
 public static class HeroFighterFactory
 {
     /// <param name="currentHp">
-    /// Hit points carried by the run; they replace Player's (full) value when present.
+    /// Hit points carried by the run. A missing value starts at the hero's maximum.
     /// </param>
-    /// <param name="currentMana">Mana carried by the run, same rule.</param>
+    /// <param name="currentMana">Mana carried by the run. Zero is a valid supplied value.</param>
     public static Fighter Create(
         HeroCombatData data,
         int? currentHp = null,
@@ -21,8 +21,8 @@ public static class HeroFighterFactory
         ArgumentNullException.ThrowIfNull(data);
 
         HeroCombatSnapshot hero = data.Hero;
-        int hp = currentHp ?? hero.CurrentHp;
-        int mana = currentMana ?? hero.CurrentMana;
+        int hp = currentHp ?? hero.MaxHp;
+        int mana = currentMana ?? hero.MaxMana;
         if (hp <= 0 || hp > hero.MaxHp || mana < 0 || mana > hero.MaxMana)
         {
             throw new InvalidHeroCombatDataException(

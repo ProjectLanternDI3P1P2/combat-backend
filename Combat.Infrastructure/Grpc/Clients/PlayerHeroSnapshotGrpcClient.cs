@@ -49,11 +49,24 @@ public sealed class PlayerHeroSnapshotGrpcClient(
             throw new ExternalServiceUnavailableException(ServiceName, exception);
         }
 
+        if (!Guid.TryParse(reply.HeroId, out Guid receivedHeroId) || receivedHeroId != heroId)
+        {
+            throw new InvalidHeroCombatDataException(
+                heroId,
+                ["Player did not return the requested hero identifier."]
+            );
+        }
+
+        if (reply.Level < 1)
+        {
+            throw new InvalidHeroCombatDataException(heroId, ["Player returned an invalid level."]);
+        }
+
         return new HeroCombatSnapshot
         {
-            HeroId = Guid.Parse(reply.HeroId),
+            HeroId = receivedHeroId,
             Name = reply.Name,
-            Level = Math.Max(1, reply.Level),
+            Level = reply.Level,
             CurrentHp = reply.CurrentHp,
             MaxHp = reply.MaxHp,
             CurrentMana = reply.CurrentMana,

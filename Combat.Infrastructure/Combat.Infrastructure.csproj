@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -7,11 +7,11 @@
 
   <ItemGroup>
     <PackageReference Include="Bogus" Version="35.6.5" />
-    <PackageReference Include="Dungeon.Contracts" Version="5.0.0" />
+    <PackageReference Include="Dungeon.Contracts" Version="6.0.0" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.76.0" />
     <PackageReference
       Include="Player.Contracts"
-      Version="5.0.0"
+      Version="6.0.0"
       Aliases="PlayerContracts"
       PrivateAssets="compile"
     />

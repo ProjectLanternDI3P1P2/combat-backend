@@ -71,6 +71,49 @@ public sealed class CombatGrpcServiceIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CreateCombat_TwoEncounters_UsesMaximaThenCarriesRunResourcesIncludingZero()
+    {
+        CombatService.CombatServiceClient client = CreateClient();
+        string heroId = MockHeroCatalog.WoundedRogueHeroId.ToString();
+        CreateCombatRequest first = Request(monsters: 1);
+        first.Participants.Add(new EncounterParticipant { HeroId = heroId });
+
+        CreateCombatResponse firstResponse = await client.CreateCombatAsync(
+            first,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+        CombatParticipant initialHero = firstResponse.Participants.Single(p =>
+            p.ExternalId == heroId
+        );
+        initialHero.CurrentHp.Should().Be(initialHero.MaxHp);
+        initialHero.CurrentMana.Should().Be(initialHero.MaxMana);
+
+        CreateCombatRequest second = Request(monsters: 1);
+        second.RunId = first.RunId;
+        second.SessionId = first.SessionId;
+        second.Participants.Add(
+            new EncounterParticipant
+            {
+                HeroId = heroId,
+                CurrentHp = 42,
+                CurrentMana = 0,
+            }
+        );
+
+        CreateCombatResponse secondResponse = await client.CreateCombatAsync(
+            second,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+        secondResponse.Participants.Count(p => p.Type == "Hero").Should().Be(2);
+        CombatParticipant carriedHero = secondResponse.Participants.Single(p =>
+            p.ExternalId == heroId
+        );
+        carriedHero.CurrentHp.Should().Be(42);
+        carriedHero.CurrentMana.Should().Be(0);
+        carriedHero.MaxMana.Should().Be(initialHero.MaxMana);
+    }
+
+    [Fact]
     public async Task CreateCombat_ReplayedCommand_ReturnsTheSameCombat()
     {
         CombatService.CombatServiceClient client = CreateClient();

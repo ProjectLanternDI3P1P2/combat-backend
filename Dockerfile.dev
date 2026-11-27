@@ -3,8 +3,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS contracts
 WORKDIR /contracts
 COPY --from=player-contracts Player.Contracts Player/Player.Contracts
 COPY --from=dungeon-contracts Dungeon.Contracts Dungeon/Dungeon.Contracts
-RUN dotnet pack Player/Player.Contracts/Player.Contracts.csproj --configuration Release --output /local-packages \
- && dotnet pack Dungeon/Dungeon.Contracts/Dungeon.Contracts.csproj --configuration Release --output /local-packages
+RUN dotnet pack Player/Player.Contracts/Player.Contracts.csproj -p:PackageVersion=6.0.0 --configuration Release --output /local-packages \
+ && dotnet pack Dungeon/Dungeon.Contracts/Dungeon.Contracts.csproj -p:PackageVersion=6.0.0 --configuration Release --output /local-packages
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
