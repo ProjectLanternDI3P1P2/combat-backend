@@ -16,6 +16,12 @@ public sealed record HeroCombatSnapshot
     public required HeroCombatStats Stats { get; init; }
     public required IReadOnlyCollection<HeroAbility> Abilities { get; init; }
 
+    /// <summary>Player class code, e.g. "warrior"; drives the sprite and the headwear.</summary>
+    public string ClassCode { get; init; } = string.Empty;
+
+    /// <summary>Null when Player did not send it: the client then uses its default.</summary>
+    public HeroAppearanceSnapshot? Appearance { get; init; }
+
     /// <summary>True when the data comes from the local mock instead of the Player service.</summary>
     public bool IsMocked { get; init; }
 }

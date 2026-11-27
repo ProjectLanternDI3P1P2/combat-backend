@@ -9,4 +9,7 @@ public sealed class MonsterGenerationOptions
     public int StatIncreasePerFloor { get; init; } = 2;
 
     public int AdditionalPlayerStatMultiplier { get; init; } = 1;
+
+    /// <summary>Maximum number of monsters a single encounter can require.</summary>
+    public int MaxMonstersPerEncounter { get; init; } = 10;
 }
