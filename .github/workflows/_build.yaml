@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   build:
@@ -22,4 +23,6 @@ jobs:
       # Release, unlike the test job: a warning that only surfaces in a release build
       # should fail here rather than at packaging time.
       - name: Build solution
+        env:
+          NuGetPackageSourceCredentials_github: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }};ValidAuthenticationTypes=Basic
         run: dotnet build Combat.Presentation.slnx --configuration Release
