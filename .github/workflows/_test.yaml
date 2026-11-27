@@ -5,11 +5,15 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   test:
     name: dotnet test
     runs-on: ubuntu-latest
+    # Job level: the migration check publishes the app, which restores again.
+    env:
+      NuGetPackageSourceCredentials_github: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }};ValidAuthenticationTypes=Basic
     services:
       postgres:
         image: postgres:17-alpine
