@@ -1,4 +1,5 @@
 using Combat.Application.Models;
+using Combat.Domain.Repositories;
 using Combat.Domain.Services;
 using Combat.Infrastructure.ExternalServices;
 using Combat.Infrastructure.Grpc;
@@ -31,7 +32,9 @@ public static class InfrastructureServiceRegistration
             .Configure<MonsterGenerationOptions>(
                 configuration.GetSection(MonsterGenerationOptions.SectionName)
             )
+            .Configure<CombatOptions>(configuration.GetSection(CombatOptions.SectionName))
             .AddSingleton<IClock, SystemClock>()
+            .AddSingleton<IDice, SystemDice>()
             .AddTransient(typeof(IPipelineBehavior<,>), typeof(CommandTransactionBehavior<,>))
             .AddEfConnection()
             .AddRepositories()
