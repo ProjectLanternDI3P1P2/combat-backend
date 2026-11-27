@@ -1,4 +1,5 @@
 using Combat.Domain.Entities;
+using Combat.Infrastructure.Persistence.Records;
 using Microsoft.EntityFrameworkCore;
 
 namespace Combat.Infrastructure.Persistence;
@@ -10,6 +11,10 @@ public class CombatDbContext(DbContextOptions<CombatDbContext> options) : DbCont
     public virtual DbSet<Monster> Monsters { get; set; }
 
     public virtual DbSet<MonsterDefinition> MonsterDefinitions { get; set; }
+
+    public virtual DbSet<CombatInstanceRecord> CombatInstances { get; set; }
+
+    public virtual DbSet<CombatFighterRecord> CombatFighters { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

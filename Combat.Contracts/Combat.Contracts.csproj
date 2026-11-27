@@ -19,16 +19,18 @@
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.33.2" />
     <PackageReference Include="Grpc.Core.Api" Version="2.76.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.76.0">
+    <PackageReference Include="Grpc.Tools" Version="2.84.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <Protobuf Include="Protos/combat_player_v1.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos/combat_combat_v1.proto" GrpcServices="Both" />
     <Protobuf Include="Protos/combat_events_v1.proto" GrpcServices="None" />
     <!-- Consumers that use another language can retrieve the source contract from the package. -->
     <None Include="Protos/combat_player_v1.proto" Pack="true" PackagePath="proto" />
+    <None Include="Protos/combat_combat_v1.proto" Pack="true" PackagePath="proto" />
     <None Include="Protos/combat_events_v1.proto" Pack="true" PackagePath="proto" />
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>

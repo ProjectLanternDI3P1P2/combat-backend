@@ -40,63 +40,63 @@ public static class DataSeeder
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb201",
                 "Cave Goblin",
                 MonsterClass.Ordinary,
-                10,
+                new BaseStats(22, 12, 6, 9),
                 "cave-goblin"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb202",
                 "Moss Wolf",
                 MonsterClass.Ordinary,
-                10,
+                new BaseStats(18, 13, 3, 13),
                 "moss-wolf"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb203",
                 "Skeleton Scout",
                 MonsterClass.Ordinary,
-                10,
+                new BaseStats(26, 14, 5, 6),
                 "skeleton-scout"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb204",
                 "Ash Ogre",
                 MonsterClass.SubBoss,
-                15,
+                new BaseStats(15, 15, 15, 15),
                 "ash-ogre"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb205",
                 "Crypt Warden",
                 MonsterClass.SubBoss,
-                15,
+                new BaseStats(15, 15, 15, 15),
                 "crypt-warden"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb206",
                 "Thorn Matriarch",
                 MonsterClass.SubBoss,
-                15,
+                new BaseStats(15, 15, 15, 15),
                 "thorn-matriarch"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb207",
                 "Magma Behemoth",
                 MonsterClass.Boss,
-                20,
+                new BaseStats(130, 22, 10, 6),
                 "magma-behemoth"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb208",
                 "Crypt Sovereign",
                 MonsterClass.Boss,
-                20,
+                new BaseStats(110, 24, 8, 9),
                 "crypt-sovereign"
             ),
             CreateDefinition(
                 "0d89a169-cfa8-4c0f-8e27-59e1cedbb209",
                 "Abyssal Tyrant",
                 MonsterClass.Boss,
-                20,
+                new BaseStats(120, 20, 12, 8),
                 "abyssal-tyrant"
             ),
         ];
@@ -106,7 +106,7 @@ public static class DataSeeder
         string id,
         string name,
         MonsterClass monsterClass,
-        int baseStat,
+        BaseStats stats,
         string imageKey
     )
     {
@@ -116,10 +116,16 @@ public static class DataSeeder
             Name = name,
             Class = monsterClass,
             ImageUrl = $"/assets/monsters/{imageKey}.png",
-            BaseHealth = baseStat,
-            BaseAttack = baseStat,
-            BaseDefense = baseStat,
-            BaseSpeed = baseStat,
+            BaseHealth = stats.Health,
+            BaseAttack = stats.Attack,
+            BaseDefense = stats.Defense,
+            BaseSpeed = stats.Speed,
         };
     }
+
+    /// <summary>
+    /// Base statistics before the floor and party-size scaling. Balanced against the hero
+    /// formulas of Player (docs/player/combatant_snapshot.en.md in player-backend).
+    /// </summary>
+    private sealed record BaseStats(int Health, int Attack, int Defense, int Speed);
 }
