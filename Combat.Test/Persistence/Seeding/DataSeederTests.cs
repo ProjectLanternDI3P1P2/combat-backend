@@ -30,12 +30,21 @@ public sealed class DataSeederTests
             .Should()
             .Be(3);
         context
-            .MonsterDefinitions.Should()
-            .OnlyContain(definition =>
-                definition.BaseHealth == definition.BaseAttack
-                && definition.BaseAttack == definition.BaseDefense
-                && definition.BaseDefense == definition.BaseSpeed
+            .MonsterDefinitions.Single(definition => definition.Name == "Cave Goblin")
+            .Should()
+            .BeEquivalentTo(
+                new
+                {
+                    BaseHealth = 22,
+                    BaseAttack = 12,
+                    BaseDefense = 6,
+                    BaseSpeed = 9,
+                }
             );
+        context
+            .MonsterDefinitions.Where(definition => definition.Class == MonsterClass.Boss)
+            .Should()
+            .OnlyContain(definition => definition.BaseHealth >= 100);
     }
 
     private static CombatDbContext CreateInMemoryDbContext()

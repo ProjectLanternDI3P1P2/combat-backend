@@ -13,7 +13,9 @@ public static class ApplicationServiceRegistration
         return services
             .ConfigureMediatR()
             .ConfigureFluentValidation()
-            .AddScoped<IHeroCombatDataProvider, HeroCombatDataProvider>();
+            .AddScoped<IHeroCombatDataProvider, HeroCombatDataProvider>()
+            .AddScoped<IHeroFighterInitializer, HeroFighterInitializer>()
+            .AddScoped<ICombatResultReporter, CombatResultReporter>();
     }
 
     private static IServiceCollection ConfigureMediatR(this IServiceCollection services)

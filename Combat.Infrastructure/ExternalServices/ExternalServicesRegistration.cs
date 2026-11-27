@@ -28,15 +28,16 @@ public static class ExternalServicesRegistration
             .AddSingleton<MockHeroSnapshotClient>()
             .AddSingleton<MockCombatInventoryClient>();
 
-        // Player and Rewards have not published their contracts yet: the mocks are the only source.
-        // Once a real gRPC client exists, replace the matching line with
-        // AddHeroSnapshotClientWithMockFallback<TRealClient>() or AddCombatInventoryClientWithMockFallback<TRealClient>().
-        services.AddScoped<IHeroSnapshotClient>(provider =>
-            provider.GetRequiredService<MockHeroSnapshotClient>()
-        );
-        services.AddScoped<ICombatInventoryClient>(provider =>
-            provider.GetRequiredService<MockCombatInventoryClient>()
-        );
+        // Heroes come from the real Player service (PlayerHeroSnapshotGrpcClient, registered
+        // with the gRPC clients). The mock answers only when the fallback is explicitly
+        // enabled; it is off in every committed configuration.
+        if (playerOptions.IsMockFallbackEnabled)
+        {
+            services.AddHeroSnapshotClientWithMockFallback<Grpc.Clients.PlayerHeroSnapshotGrpcClient>();
+        }
+
+        // No consumable item in combat yet: an empty inventory, never invented items.
+        services.AddScoped<ICombatInventoryClient, NoCombatInventoryClient>();
 
         return services;
     }

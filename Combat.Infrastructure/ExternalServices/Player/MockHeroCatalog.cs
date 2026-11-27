@@ -36,6 +36,7 @@ public static class MockHeroCatalog
                 Ability("a1000000-0000-0000-0000-000000000001", "Heavy Strike", 5, "SingleEnemy"),
                 Ability("a1000000-0000-0000-0000-000000000002", "Shield Wall", 8, "Self"),
             ],
+            ClassCode = "warrior",
             IsMocked = true,
         },
         new HeroCombatSnapshot
@@ -87,6 +88,10 @@ public static class MockHeroCatalog
 
     public static HeroCombatSnapshot? Find(Guid heroId) => Heroes.GetValueOrDefault(heroId);
 
+    /// <summary>Every mocked hero, used when a session roster is served.</summary>
+    public static IReadOnlyList<Guid> HeroIds { get; } =
+    [WarriorHeroId, MageHeroId, WoundedRogueHeroId];
+
     private static HeroAbility Ability(
         string abilityId,
         string name,
@@ -95,7 +100,7 @@ public static class MockHeroCatalog
     ) =>
         new()
         {
-            AbilityId = Guid.Parse(abilityId),
+            Code = abilityId,
             Name = name,
             ManaCost = manaCost,
             TargetType = targetType,

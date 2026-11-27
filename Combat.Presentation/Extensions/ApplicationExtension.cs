@@ -1,3 +1,4 @@
+using Combat.Presentation.Hubs;
 using Combat.Presentation.Middleware;
 using Scalar.AspNetCore;
 
@@ -7,6 +8,11 @@ public static class ApplicationExtension
 {
     public static WebApplication ConfigureStart(this WebApplication app)
     {
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseCors(BuilderExtension.LocalFrontendsCorsPolicy);
+        }
+
         app.UseMiddleware<ExceptionHandlingMiddleware>();
 
         if (!app.Environment.IsDevelopment())
@@ -16,6 +22,7 @@ public static class ApplicationExtension
 
         app.MapControllers();
         app.MapGrpcServices();
+        app.MapHub<CombatHub>(CombatHub.Route);
         app.MapHealthChecks("/health/live");
         app.MapHealthChecks("/health/ready");
 
