@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  packages: read
 
 jobs:
   sonar:
@@ -73,6 +74,7 @@ jobs:
       - name: Build, test and analyse
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          NuGetPackageSourceCredentials_github: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }};ValidAuthenticationTypes=Basic
           COMBAT_TEST_DATABASE_CONNECTION: Host=localhost;Port=5432;Database=combat_test;Username=combat
         run: |
           dotnet dotnet-sonarscanner begin \

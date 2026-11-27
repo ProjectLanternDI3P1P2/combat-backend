@@ -23,6 +23,8 @@ concurrency:
 
 permissions:
   contents: read
+  # The called workflows restore Player.Contracts and Dungeon.Contracts from GitHub Packages.
+  packages: read
 
 jobs:
   lint:
