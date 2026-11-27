@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/v1.1.1...v1.2.0) (2026-11-26)
+
+
+### Added
+
+* **migrations:** add migration-only command for GitOps jobs ([86d616e](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/86d616e18e4e9279aef15c3bfe5b2b19377f5c11))
+
+## [1.1.1](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/v1.1.0...v1.1.1) (2026-11-25)
+
+
+### Fixed
+
+* **cd:** publish images through groupe7 Harbor domain ([49313eb](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/49313ebd43e1fce99f2bfe3275ea9461fe9d7c82))
+* **cd:** publish through private Harbor 10.4.111.200:18443 ([f91ce10](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/f91ce10c3c33e01d0c62e2be4c7c85cd2430195a))
+* **cd:** publish through private Harbor endpoint ([d5707cc](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/d5707cca5ef75268939eb47f4beac01649d732d2))
+* **cd:** use shared workflow with new Harbor endpoint ([2eab084](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/2eab084c34c22f9503423ad4071a26a82d812406))
+
 ## [1.1.0](https://github.com/ProjectLanternDI3P1P2/dotnet-backend-template/compare/v1.0.0...v1.1.0) (2026-09-23)
 
 
