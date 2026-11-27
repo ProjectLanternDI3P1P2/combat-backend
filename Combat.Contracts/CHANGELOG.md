@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.0.0](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/contracts-v2.0.0...contracts-v3.0.0) (2026-11-27)
+
+
+### Added
+
+* **combat:** open a combat over the internal gRPC contract ([faa8dda](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/faa8dda9ff63bffbcbc180afe2a22fdf346bb140))
+* **contracts:** carry the run, the party and the monsters in CreateCombat ([314efba](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/314efbac7d6c424423e096e94df7beafe1d6d215))
+
 ## [2.0.0](https://github.com/ProjectLanternDI3P1P2/dotnet-backend-template/compare/contracts-v1.0.0...contracts-v2.0.0) (2026-09-23)
 
 
