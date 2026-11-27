@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/v1.2.0...v1.2.1) (2026-11-27)
+
+
+### Fixed
+
+* **docker:** force build platform to linux/amd64 ([c81f90d](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/c81f90d6aa248d902735ec42faab7efd8ac274a7))
+* **docker:** force build platform to linux/amd64 ([7b746ac](https://github.com/ProjectLanternDI3P1P2/combat-backend/commit/7b746aceaf7e1c599651a6bcb52ed7aa98580c9a))
+
 ## [1.2.0](https://github.com/ProjectLanternDI3P1P2/combat-backend/compare/v1.1.1...v1.2.0) (2026-11-26)
 
 
