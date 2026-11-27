@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1.10
 
 ARG DOTNET_VERSION=10.0
+ARG DOTNET_SDK_PLATFORM=linux/amd64
 
 # ============================================================
 # 1. RESTORE
 # ============================================================
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS restore
+FROM --platform=${DOTNET_SDK_PLATFORM} mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS restore
 
 WORKDIR /src
 COPY NuGet.config ./

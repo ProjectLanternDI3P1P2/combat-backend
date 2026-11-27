@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1.10
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS contracts
+ARG DOTNET_SDK_PLATFORM=linux/amd64
+FROM --platform=${DOTNET_SDK_PLATFORM} mcr.microsoft.com/dotnet/sdk:10.0 AS contracts
 WORKDIR /contracts
 COPY --from=player-contracts Player.Contracts Player/Player.Contracts
 COPY --from=dungeon-contracts Dungeon.Contracts Dungeon/Dungeon.Contracts
 RUN dotnet pack Player/Player.Contracts/Player.Contracts.csproj --configuration Release --output /local-packages \
  && dotnet pack Dungeon/Dungeon.Contracts/Dungeon.Contracts.csproj --configuration Release --output /local-packages
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=${DOTNET_SDK_PLATFORM} mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY NuGet.Local.config ./NuGet.config
 COPY Combat.Presentation.slnx ./
